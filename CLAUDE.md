@@ -11,6 +11,7 @@
   - **Músculos (Execução):** Roteamento via OpenRouter (GPT-5.4, Qwen 3.6, Minimax 2.7) para evitar gargalos de rate limit e otimizar custos.
   - **Analytics Local:** Gemma 4 rodando na VPS Hostinger.
 - Pastas: `/raw`, `/knowledge`, `/templates`, `/workspace/video-renderer`, `/scripts`, `/output`.
+- **Distribuição multi-plataforma:** Upload-Post API (`UPLOAD_POST_API_KEY`, `UPLOAD_POST_BASE_URL`, `UPLOAD_POST_PROFILE`) — escolhido sobre Postiz pelo `request_id` tracking automático.
 
 ## 3. Coding Conventions
 - **Orquestração:** OpenClaw com notificações assíncronas via módulo Telegram.

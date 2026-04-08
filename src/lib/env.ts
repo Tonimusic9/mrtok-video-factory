@@ -25,6 +25,14 @@ const envSchema = z.object({
   VPS_TAILSCALE_IP: z.string().min(1),
   GEMMA_LOCAL_URL: z.string().url(),
 
+  // Upload-Post (distribuição multi-plataforma — Tarefa 3)
+  UPLOAD_POST_API_KEY: z.string().min(1, "UPLOAD_POST_API_KEY ausente"),
+  UPLOAD_POST_BASE_URL: z
+    .string()
+    .url()
+    .default("https://api.upload-post.com"),
+  UPLOAD_POST_PROFILE: z.string().min(1, "UPLOAD_POST_PROFILE ausente"),
+
   // Segurança
   ALLOWED_IPS: z.string().min(1, "ALLOWED_IPS deve conter ao menos o range Tailscale"),
   READ_ONLY_MODE: z
