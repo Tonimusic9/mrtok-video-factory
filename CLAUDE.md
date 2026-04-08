@@ -24,3 +24,11 @@
 - **Estratégia Unique Pixel Hash (Obrigatório):** Todo código de renderização do Remotion deve incluir modificadores aleatorizados (escala 1.01x, rotação 0.1º) para garantir hash única por exportação.
 - **Fator Humano Obrigatório:** A propriedade `human_imperfections_injection` no JSON do Agente 3 é obrigatória para simular criadores reais.
 - **Fluxo PERT:** Trabalhe exclusivamente seguindo o fluxo: Plan, Execute, Review, Test.
+
+## 5. Status do Pipeline (Tarefas)
+- ✅ **Tarefa 1** — Scaffold Next.js 16 + infra base + skills.
+- ✅ **Tarefa 2** — Schemas Supabase + tipos da Matriz Criativa + webhook agente-0.
+- ✅ **Tarefa 3** — Integração Upload-Post + migração middleware → proxy.ts.
+- ✅ **Tarefa 4** — Dashboard QC + extração de `dispatch-service` compartilhado.
+- ✅ **Tarefa 5** — Agente CEO (orquestrador autônomo de dispatch). E2E validado em runtime; regra de auditoria (`compliance_approved` imutável em falha) confirmada.
+- 🚧 **Tarefa 6** — Agentes Músculo via OpenRouter. Em andamento: estrutura inicial do Scriptwriter (`src/lib/agents/scriptwriter.ts`) com contrato Zod (hook/body/cta) e roteamento `a3 → Qwen 3.6`. Próximo passo: brainstorming de prompt + few-shots e integração com a fila `task_queue`.
