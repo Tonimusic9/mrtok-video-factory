@@ -32,3 +32,12 @@
 - ✅ **Tarefa 4** — Dashboard QC + extração de `dispatch-service` compartilhado.
 - ✅ **Tarefa 5** — Agente CEO (orquestrador autônomo de dispatch). E2E validado em runtime; regra de auditoria (`compliance_approved` imutável em falha) confirmada.
 - 🚧 **Tarefa 6** — Agentes Músculo via OpenRouter. Em andamento: estrutura inicial do Scriptwriter (`src/lib/agents/scriptwriter.ts`) com contrato Zod (hook/body/cta) e roteamento `a3 → Qwen 3.6`. Próximo passo: brainstorming de prompt + few-shots e integração com a fila `task_queue`.
+
+## 6. Git Recovery (2026-04-08)
+Durante a Tarefa 6, a ref `refs/heads/main` foi zerada por um processo desconhecido entre dois commits, fazendo `git status` reportar "No commits yet" e tentar criar um root commit órfão (`ce42dea`) com o projeto inteiro. Recovery executado em três passos:
+1. `git reset --soft 55868b0` — restaurou o ponteiro `main` ao histórico linear (tarefas 1–5 + setup Tarefa 6) sem perder o staged set.
+2. `git commit` — criou `c5c6cf1 chore: instalação de skills de contexto e mestre-statusbar` em cima do histórico restaurado.
+3. **Tag de segurança `tarefa-6-setup`** criada apontando `c5c6cf1` — âncora caso a ref morra de novo: recovery vira `git update-ref refs/heads/main tarefa-6-setup`.
+4. **Remote `origin` removido** — apontava para `d0cc06a` (commit "chore: inicializa repositório", desconectado do nosso histórico, possivelmente fonte do reset). Repo agora é puramente local.
+
+Histórico final estável: `c5c6cf1 → 55868b0 → 55698a5 → b55ce7d → 76d4eb9 → faa8cbf → e59db12 → 5df3d04`.

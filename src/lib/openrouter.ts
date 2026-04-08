@@ -6,11 +6,11 @@
  * modelo correto conforme o agente solicitante.
  *
  * Mapeamento canônico (ver arquitetura_ugc.md):
- *   a0 · Curador de Winners      → Minimax 2.7
- *   a1 · Extrator Multimodal     → Gemini 3 Flash
+ *   a0 · Curador de Winners      → Minimax M2.7
+ *   a1 · Extrator Multimodal     → Gemini 3 Flash Preview
  *   a2 · Framework (AIDA/PAS)    → GPT-5.4
- *   a3 · Copywriter PT-BR        → Qwen 3.6
- *   a4 · Diretor de Arte         → Qwen 3.6
+ *   a3 · Copywriter PT-BR        → Qwen3 Max
+ *   a4 · Diretor de Arte         → Qwen3 Max
  *   a5 · Produtor Visual/Voz     → GPT-5.4
  *   a6 · Montador CLI            → GPT-5.4
  *   a7 · Deployer                → GPT-5.4
@@ -18,13 +18,13 @@
 import { getEnv } from "@/lib/env";
 import type { TaskAgent } from "@/types/database";
 
-/** Slugs OpenRouter — validar/atualizar quando os modelos forem publicados. */
+/** Slugs OpenRouter — validados contra GET /api/v1/models em 2026-04-08. */
 export const MODEL_MAP: Record<Exclude<TaskAgent, "qc" | "a8" | "ceo">, string> = {
-  a0: "minimax/minimax-2.7",
-  a1: "google/gemini-3-flash",
+  a0: "minimax/minimax-m2.7",
+  a1: "google/gemini-3-flash-preview",
   a2: "openai/gpt-5.4",
-  a3: "qwen/qwen-3.6",
-  a4: "qwen/qwen-3.6",
+  a3: "qwen/qwen3-max",
+  a4: "qwen/qwen3-max",
   a5: "openai/gpt-5.4",
   a6: "openai/gpt-5.4",
   a7: "openai/gpt-5.4",
