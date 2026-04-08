@@ -8,12 +8,18 @@
  * Mapeamento canônico (ver arquitetura_ugc.md):
  *   a0 · Curador de Winners      → Minimax M2.7
  *   a1 · Extrator Multimodal     → Gemini 3 Flash Preview
- *   a2 · Framework (AIDA/PAS)    → GPT-5.4
+ *   a2 · Framework (AIDA/PAS)    → Minimax M2.7
  *   a3 · Copywriter PT-BR        → Qwen3 Max
  *   a4 · Diretor de Arte         → Qwen3 Max
- *   a5 · Produtor Visual/Voz     → GPT-5.4
- *   a6 · Montador CLI            → GPT-5.4
- *   a7 · Deployer                → GPT-5.4
+ *   a5 · Produtor Visual/Voz     → Minimax M2.7
+ *   a6 · Montador CLI            → GLM 5.1
+ *   a7 · Deployer                → GLM 5.1
+ *
+ * ARQUITETURA 100% OPEN SOURCE / NON-OPENAI:
+ * Nenhum músculo roteia para OpenAI. Todos os agentes usam modelos
+ * open-weights ou de laboratórios não-OpenAI (Minimax, Google, Qwen/Alibaba,
+ * Z-AI/Zhipu). O único componente closed-source é o Cérebro (Claude Opus 4.6
+ * via API direta da Anthropic) — ver CLAUDE.md §2.
  */
 import { getEnv } from "@/lib/env";
 import type { TaskAgent } from "@/types/database";
@@ -22,12 +28,12 @@ import type { TaskAgent } from "@/types/database";
 export const MODEL_MAP: Record<Exclude<TaskAgent, "qc" | "a8" | "ceo">, string> = {
   a0: "minimax/minimax-m2.7",
   a1: "google/gemini-3-flash-preview",
-  a2: "openai/gpt-5.4",
+  a2: "minimax/minimax-m2.7",
   a3: "qwen/qwen3-max",
   a4: "qwen/qwen3-max",
-  a5: "openai/gpt-5.4",
-  a6: "openai/gpt-5.4",
-  a7: "openai/gpt-5.4",
+  a5: "minimax/minimax-m2.7",
+  a6: "z-ai/glm-5.1",
+  a7: "z-ai/glm-5.1",
 };
 
 export interface OpenRouterMessage {
