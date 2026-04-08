@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | grep -qE '(^|/)(\\.env|\\.env\\.local|src/lib/dispatch-service\\.ts)$' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Arquivo protegido (.env, .env.local, src/lib/dispatch-service.ts) — edição/deleção bloqueada. Avise o usuário antes de qualquer alteração.\"}}' || echo '{}'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // .tool_response.filePath // \"unknown\"'); t=$(echo \"$input\" | jq -r '.tool_name'); log=\"/Users/toninhoacunha/Documents/Obsidian - ClaudeCodeBrain/ClaudeCodeBrain/Sessions/claude-auto-audit.md\"; mkdir -p \"$(dirname \"$log\")\"; [ -f \"$log\" ] || echo '# Claude Auto Audit Log' > \"$log\"; echo \"- $(date '+%Y-%m-%dT%H:%M:%S') | $t | $f\" >> \"$log\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"Tarefa finalizada. Aguardando comandos.\" with title \"Claude Code\"' 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
