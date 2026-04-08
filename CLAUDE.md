@@ -1,1 +1,25 @@
-@AGENTS.md
+# CLAUDE.md — MrTok Framework
+
+## 1. Project Description
+**Projeto:** MrTok (TikTok Shop BR – AIGC Video Factory).
+**Objetivo:** Fábrica autônoma de UGC orquestrada via OpenClaw, desenhada para alta conversão e **blindagem algorítmica** contra punições do TikTok Shop (shadowbans por IA não original ou propaganda enganosa).
+
+## 2. File Structure & Infrastructure
+- **VPS Hostinger (Tailscale):** `100.72.40.35`
+- **Dashboard/DB:** Next.js + Supabase.
+- **Estratégia de LLMs (Híbrida):** - **Cérebro (Orquestração/QC):** Claude Opus 4.6 via API Direta (Anthropic).
+  - **Músculos (Execução):** Roteamento via OpenRouter (GPT-5.4, Qwen 3.6, Minimax 2.7) para evitar gargalos de rate limit e otimizar custos.
+  - **Analytics Local:** Gemma 4 rodando na VPS Hostinger.
+- Pastas: `/raw`, `/knowledge`, `/templates`, `/workspace/video-renderer`, `/scripts`, `/output`.
+
+## 3. Coding Conventions
+- **Orquestração:** OpenClaw com notificações assíncronas via módulo Telegram.
+- **Modo Híbrido OpenRouter:** Uso mandatório do gateway para roteamento granular. O Agente CEO deve delegar tarefas de execução aos sub-agentes via OpenRouter, nunca processando copy ou código pesado na API do Opus.
+- **Montagem:** O Remotion (Agente 6) usa manifestos do `OpenMontage` e componentes do `@launchpad/shared`.
+
+## 4. Rules & Constraints
+- **Segurança da VPS:** Sandbox ativa no OpenClaw, portas públicas bloqueadas.
+- **Integridade e Verossimilhança do Produto (CRÍTICO):** É TERMINANTEMENTE PROIBIDO gerar imagens ou roteiros que exagerem o produto ou prometam funções irreais. Compliance total com TikTok Shop.
+- **Estratégia Unique Pixel Hash (Obrigatório):** Todo código de renderização do Remotion deve incluir modificadores aleatorizados (escala 1.01x, rotação 0.1º) para garantir hash única por exportação.
+- **Fator Humano Obrigatório:** A propriedade `human_imperfections_injection` no JSON do Agente 3 é obrigatória para simular criadores reais.
+- **Fluxo PERT:** Trabalhe exclusivamente seguindo o fluxo: Plan, Execute, Review, Test.

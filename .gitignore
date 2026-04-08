@@ -30,8 +30,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — commitar APENAS o exemplo
 .env*
+!.env.example
+
+# MrTok — saídas e assets brutos (manter apenas .gitkeep/README)
+/output/*
+!/output/.gitkeep
+!/output/README.md
+/raw/*
+!/raw/.gitkeep
+!/raw/README.md
 
 # vercel
 .vercel
@@ -39,3 +48,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase CLI cache local
+/supabase/.temp/
+
+# Claude Code — settings locais (podem conter tokens/permissões sensíveis)
+.claude/settings.local.json

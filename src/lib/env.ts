@@ -1,0 +1,51 @@
+/**
+ * Loader tipado de variáveis de ambiente do MrTok.
+ * Valida a presença das chaves críticas no boot; falha rápida se faltar algo.
+ * Ver CLAUDE.md §2 (Infra Híbrida) e §4 (Segurança).
+ */
+import { z } from "zod";
+
+const envSchema = z.object({
+  // Cérebro
+  ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY ausente (Cérebro Opus 4.6)"),
+
+  // Músculos
+  OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY ausente (roteamento híbrido)"),
+
+  // Supabase
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+
+  // Telegram
+  TELEGRAM_BOT_TOKEN: z.string().min(1),
+  TELEGRAM_CHAT_ID: z.string().min(1),
+
+  // VPS / Tailscale
+  VPS_TAILSCALE_IP: z.string().min(1),
+  GEMMA_LOCAL_URL: z.string().url(),
+
+  // Segurança
+  ALLOWED_IPS: z.string().min(1, "ALLOWED_IPS deve conter ao menos o range Tailscale"),
+  READ_ONLY_MODE: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+let cached: Env | null = null;
+
+export function getEnv(): Env {
+  if (cached) return cached;
+  const parsed = envSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+      .join("\n");
+    throw new Error(`[MrTok] Variáveis de ambiente inválidas:\n${issues}`);
+  }
+  cached = parsed.data;
+  return cached;
+}
