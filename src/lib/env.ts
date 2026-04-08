@@ -33,6 +33,9 @@ const envSchema = z.object({
     .default("https://api.upload-post.com"),
   UPLOAD_POST_PROFILE: z.string().min(1, "UPLOAD_POST_PROFILE ausente"),
 
+  // Agente CEO (Tarefa 5) — secret do endpoint /api/ceo/tick acionado por cron
+  CEO_TICK_SECRET: z.string().min(16, "CEO_TICK_SECRET ausente ou curto demais"),
+
   // Segurança
   ALLOWED_IPS: z.string().min(1, "ALLOWED_IPS deve conter ao menos o range Tailscale"),
   READ_ONLY_MODE: z
