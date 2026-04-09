@@ -8,7 +8,7 @@
 - **VPS Hostinger (Tailscale):** `100.72.40.35`
 - **Dashboard/DB:** Next.js + Supabase.
 - **Estratégia de LLMs (Híbrida):** - **Cérebro (Orquestração/QC):** Claude Opus 4.6 via API Direta (Anthropic).
-  - **Músculos (Execução):** Roteamento via OpenRouter (GPT-5.4, Qwen 3.6, Minimax 2.7) para evitar gargalos de rate limit e otimizar custos.
+  - **Músculos (Execução):** Roteamento via OpenRouter. **100% Open Source / Non-OpenAI** — todos os Agentes Workers (a0–a7) rodam em modelos open-weights ou de laboratórios não-OpenAI (Minimax M2.7, Google Gemini 3 Flash, Qwen3 Max, Z-AI GLM 5.1), eliminando gargalos de rate limit da OpenAI e os estrangulamentos de contexto associados. Único componente closed-source é o Cérebro (Opus).
   - **Analytics Local:** Gemma 4 rodando na VPS Hostinger.
 - Pastas: `/raw`, `/knowledge`, `/templates`, `/workspace/video-renderer`, `/scripts`, `/output`.
 - **Distribuição multi-plataforma:** Upload-Post API (`UPLOAD_POST_API_KEY`, `UPLOAD_POST_BASE_URL`, `UPLOAD_POST_PROFILE`) — escolhido sobre Postiz pelo `request_id` tracking automático.
