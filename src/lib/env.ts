@@ -36,6 +36,9 @@ const envSchema = z.object({
   // Agente CEO (Tarefa 5) — secret do endpoint /api/ceo/tick acionado por cron
   CEO_TICK_SECRET: z.string().min(16, "CEO_TICK_SECRET ausente ou curto demais"),
 
+  // FAL.ai (gateway de vídeo — Tarefa 10, Worker a6)
+  FAL_KEY: z.string().min(1, "FAL_KEY ausente (gateway FAL.ai para geração de vídeo)"),
+
   // Segurança
   ALLOWED_IPS: z.string().min(1, "ALLOWED_IPS deve conter ao menos o range Tailscale"),
   READ_ONLY_MODE: z
