@@ -31,7 +31,10 @@
 - ✅ **Tarefa 3** — Integração Upload-Post + migração middleware → proxy.ts.
 - ✅ **Tarefa 4** — Dashboard QC + extração de `dispatch-service` compartilhado.
 - ✅ **Tarefa 5** — Agente CEO (orquestrador autônomo de dispatch). E2E validado em runtime; regra de auditoria (`compliance_approved` imutável em falha) confirmada.
-- 🚧 **Tarefa 6** — Agentes Músculo via OpenRouter. Em andamento: estrutura inicial do Scriptwriter (`src/lib/agents/scriptwriter.ts`) com contrato Zod (hook/body/cta) e roteamento `a3 → Qwen 3.6`. Próximo passo: brainstorming de prompt + few-shots e integração com a fila `task_queue`.
+- 🚧 **Tarefa 6** — Agentes Músculo via OpenRouter.
+  - ✅ **Runner genérico** `src/lib/agent-runner.ts` (`runAgentTick`) — scaffolding de fila reutilizável (select FIFO → claim atômico → validar payload → process → done/failed → notificar Telegram). CEO refatorado para consumir o runner preservando a regra de ouro via outcome `already_persisted`.
+  - ✅ **Worker a3 (Scriptwriter)** — `src/workers/worker-a3.ts` implementado, drenável via `runWorkerA3Tick({ maxTasks: N })`. Contrato Zod hook/body/cta (`src/lib/agents/scriptwriter.ts`), roteamento `a3 → Qwen3 Max` via OpenRouter. Smoke `scripts/smoke-a3.ts` valida ponta-a-ponta contra Supabase + OpenRouter reais e confirma regra de ouro (zero escrita em `creative_matrix`). Status verde em ~12s.
+  - 🚧 Próximos workers: a0–a2, a4–a7. Próximo na fila: **a4 (image-prompt)** — requer desenhar a "mente" (prompt + Zod schema) antes do worker. Será aberto em /plan dedicado.
 
 ## 6. Git Recovery (2026-04-08)
 Durante a Tarefa 6, a ref `refs/heads/main` foi zerada por um processo desconhecido entre dois commits, fazendo `git status` reportar "No commits yet" e tentar criar um root commit órfão (`ce42dea`) com o projeto inteiro. Recovery executado em três passos:
