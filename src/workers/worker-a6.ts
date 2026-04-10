@@ -8,7 +8,8 @@
  *   1. Recebe ProductionSpec (output do a5) no payload.
  *   2. Gera vídeos por shot via FAL.ai (paralelo, com fallback chain).
  *   3. Usa GLM 5.1 via OpenRouter para gerar RenderManifest.
- *   4. Renderiza via Remotion (futuro — por ora retorna manifest).
+ *   4. Renderiza via Remotion na VPS `100.72.40.35` através de
+ *      `scripts/deploy-render.sh`, com streaming de logs em tempo real.
  *
  * REGRA DE OURO: este worker NUNCA escreve em `creative_matrix` e NUNCA
  * toca em `compliance_approved`.
@@ -19,6 +20,7 @@
  * Sem side-effects no top-level: importar este módulo não inicia loop nem
  * registra listener — o acionamento (cron, route handler, smoke) é externo.
  */
+import { randomUUID } from "node:crypto";
 import { runAgentTick, type AgentTickArgs, type AgentTickResult } from "@/lib/agent-runner";
 import { submitAndPoll, type FalJobResult } from "@/lib/fal-client";
 import {
@@ -27,7 +29,9 @@ import {
   montadorResultSchema,
   type MontadorTaskPayload,
   type MontadorResult,
+  type RenderTelemetry,
 } from "@/lib/agents/renderManifest";
+import { runRemoteRender } from "@/lib/agents/remoteRender";
 import { FAL_SLUG_BY_PROVIDER, type VideoProvider } from "@/lib/agents/productionSpec";
 
 // Re-export para quem consome o worker precisar auditar o resultado.
@@ -146,11 +150,23 @@ export function runWorkerA6Tick(args: AgentTickArgs = {}): Promise<AgentTickResu
           video_urls: videoUrls,
         });
 
-        // --- 3. Renderizar via Remotion (futuro — por ora retorna manifest) ---
-        // TODO: Integrar @remotion/renderer quando composição estiver pronta.
-        const outputVideoUrl = isDryRun
-          ? `${DRY_RUN_URL_PREFIX}/final-output.mp4`
-          : `${DRY_RUN_URL_PREFIX}/render-pending.mp4`;
+        // --- 3. Renderizar via Remotion na VPS (ponte deploy-render.sh) ------
+        let outputVideoUrl: string;
+        let telemetry: RenderTelemetry | undefined;
+
+        if (isDryRun) {
+          outputVideoUrl = `${DRY_RUN_URL_PREFIX}/final-output.mp4`;
+        } else {
+          const runId = randomUUID();
+          const { localPath, telemetry: tel } = await runRemoteRender({
+            manifest,
+            runId,
+          });
+          // file:// URL aponta para o MP4 renderizado no Mac local, pronto
+          // para o Worker a7 fazer o upload para o Google Drive.
+          outputVideoUrl = `file://${localPath}`;
+          telemetry = tel;
+        }
 
         const result: MontadorResult = {
           render_manifest: manifest,
@@ -158,6 +174,7 @@ export function runWorkerA6Tick(args: AgentTickArgs = {}): Promise<AgentTickResu
           output_video_url: outputVideoUrl,
           pixel_hash_applied: manifest.pixel_hash,
           dry_run: isDryRun,
+          render_telemetry: telemetry,
         };
 
         // Validação final do resultado completo.

@@ -42,6 +42,10 @@ yarn-error.log*
 !/raw/.gitkeep
 !/raw/README.md
 
+# MrTok — workspace do renderer (assets baixados do FAL + manifest em tempo de execução)
+/workspace/video-renderer/assets/
+/workspace/video-renderer/manifest.json
+
 # vercel
 .vercel
 

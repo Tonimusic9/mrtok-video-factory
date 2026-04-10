@@ -8,7 +8,7 @@
  * REGRAS (CLAUDE.md §4):
  *  - Unique Pixel Hash obrigatório: escala [1.005..1.015], rotação [-0.15..0.15]°
  *    para garantir hash única por exportação.
- *  - Formato vertical 9:16 (1080×1920) a 30fps.
+ *  - Formato vertical 9:16 (720×1280) a 30fps — resolução canônica v2.0.
  *  - Roteamento via OpenRouter (`agent='a6'` → Z-AI GLM 5.1).
  *
  * REGRA DE OURO: este módulo NUNCA escreve em `creative_matrix` e NUNCA
@@ -48,8 +48,8 @@ export type ClipEntry = z.infer<typeof clipEntrySchema>;
 
 export const renderManifestSchema = z.object({
   fps: z.literal(30),
-  width: z.literal(1080),
-  height: z.literal(1920),
+  width: z.literal(720),
+  height: z.literal(1280),
   clips: z.array(clipEntrySchema).length(3),
   pixel_hash: pixelHashModifiersSchema,
   total_duration_frames: z.number().int().positive(),
@@ -74,12 +74,32 @@ const falJobEntrySchema = z.object({
   duration_ms: z.number().nonnegative(),
 });
 
+/**
+ * Telemetria do render remoto — populada apenas em modo real (não dry_run).
+ * Capturada pelo worker a6 via streaming do stdout do `deploy-render.sh` e
+ * pelo `ffprobe` pós-render que roda na VPS antes do pull-back.
+ */
+export const renderTelemetrySchema = z.object({
+  precheck_ms: z.number().nonnegative(),
+  rsync_up_ms: z.number().nonnegative(),
+  remote_render_ms: z.number().nonnegative(),
+  ffmpeg_metadata_ms: z.number().nonnegative(),
+  rsync_down_ms: z.number().nonnegative(),
+  remote_log_path: z.string().min(1),
+  output_file_bytes: z.number().int().positive(),
+  ffprobe_width: z.literal(720),
+  ffprobe_height: z.literal(1280),
+  ffprobe_bitrate_bps: z.number().int().min(6_000_000).max(10_500_000),
+});
+export type RenderTelemetry = z.infer<typeof renderTelemetrySchema>;
+
 export const montadorResultSchema = z.object({
   render_manifest: renderManifestSchema,
   fal_jobs: z.array(falJobEntrySchema).length(3),
   output_video_url: z.string().min(1),
   pixel_hash_applied: pixelHashModifiersSchema,
   dry_run: z.boolean(),
+  render_telemetry: renderTelemetrySchema.optional(),
 });
 export type MontadorResult = z.infer<typeof montadorResultSchema>;
 
@@ -98,7 +118,7 @@ Sua tarefa: dada uma ProductionSpec (3 shots com specs de voz e vídeo) e as URL
 
 REGRAS DO MANIFEST:
 1. fps: sempre 30.
-2. width: 1080, height: 1920 (9:16 vertical TikTok).
+2. width: 720, height: 1280 (9:16 vertical TikTok 720p — resolução canônica v2.0, proibido 1080p/4K).
 3. clips: EXATAMENTE 3, na ordem hook → body → cta.
 4. Cada clip:
    - block: "hook", "body" ou "cta"
