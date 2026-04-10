@@ -36,7 +36,8 @@ ssh "${VPS_USER}@${VPS_IP}" << 'ENDSSH'
     cd /var/www/mrtok/video-renderer/
     
     # Renderiza o vídeo usando as props do manifesto
-    # Aplicando o Unique Pixel Hash matematicamente via props
+    # Resolução canônica: 720x1280 (definida no manifest.json pelo Worker a6)
+    # Unique Pixel Hash: escala + rotação aplicados via PixelHashWrapper.tsx
     npx remotion render src/index.ts out/final-video.mp4 --props="manifest.json" --log=warn
 ENDSSH
 
@@ -46,3 +47,4 @@ rsync -azq "${VPS_USER}@${VPS_IP}:${REMOTE_WORKSPACE}out/final-video.mp4" "$LOCA
 
 echo "✅ [MRTOK] Renderização concluída com sucesso!"
 echo "📍 Arquivo salvo em: $LOCAL_OUTPUT_DIR"
+echo "📌 Próximo passo: Worker a7 (Delivery) fará o upload para o Google Drive."

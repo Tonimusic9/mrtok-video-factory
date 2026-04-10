@@ -21,30 +21,31 @@ A arquitetura resolve isso com:
 
 **Histórico de Decisão (Divergência Corrigida):** A arquitetura original previa o uso do modelo `GPT-5.4` para vários agentes. Essa abordagem foi **abandonada**. O sistema atual roda 100% em modo Híbrido via OpenRouter e APIs diretas, utilizando modelos focados em custo-benefício, multimodalidade nativa e ausência de censura indesejada, mantendo o Claude Opus apenas como Cérebro.
 
+**Nota Histórica:** O Worker a2 (Framework de Venda / Minimax M2.7) foi descontinuado. Sua função de estruturar copy com frameworks clássicos (AIDA, PAS) foi integralmente absorvida pelos 3 Diagnósticos Obrigatórios do Worker a3.
+
 ### O Cérebro (Orquestração/QC e Comunicação)
-* **CEO e Gatekeeper (QC):** Claude Opus 4.6 (API Direta Anthropic). Delega tarefas, prioriza a fila e atua como Auditor Visual implacável (reprovando falhas de continuidade antes do render). Nunca processa código pesado. 
-* **Regra de Comunicação (Single Point of Contact):** O CEO é a **ÚNICA** entidade do sistema autorizada a acionar o módulo do Telegram. Todos os Workers (a0 ao a8) operam em silêncio absoluto. O CEO centraliza os logs e envia apenas pings assíncronos executivos ao Administrador (ex: status de deploy concluído, alertas de erro crítico na API ou pedidos de aprovação final).
+* **CEO e Gatekeeper (QC):** Claude Opus 4.6 (API Direta Anthropic). Delega tarefas, prioriza a fila e atua como Auditor Visual implacável em duas fases: **Fase 1 (Imagens)** — executada nativamente pelo Opus, reprovando falhas de continuidade antes do render; **Fase 2 (Vídeo)** — delegada ao Gemini 3.0 Flash para análise de movimento e mutações pós-render. Nunca processa código pesado.
+* **Regra de Comunicação (Single Point of Contact):** O CEO é a **ÚNICA** entidade do sistema autorizada a acionar o módulo do Telegram. Todos os Workers (a0 ao a8) operam em silêncio absoluto. O CEO centraliza os logs e envia apenas pings assíncronos executivos ao Administrador (ex: link do Google Drive pronto para download, alertas de erro crítico na API ou pedidos de aprovação final).
 
 ### Os Músculos (Workers via OpenRouter & APIs Locais)
 * ⏳ **Worker a0 (Curador de Winners):** Gemini 3.0 Flash. Alimenta o pipeline upstream. Usa visão e velocidade hiper-rápida para rastrear sinais de PMF via Firecrawl API (`/scrape`) e Skills SCTM.
 * ⏳ **Worker a1 (Extrator Multimodal):** Gemini 3.0 Flash. Realiza a ingestão de vídeo/áudio de referências virais para mapear *beats* emocionais, ritmo de cortes e fazer a engenharia reversa da retenção.
-* ⏳ **Worker a2 (Framework de Venda):** Minimax M2.7. Estrutura o copy com frameworks clássicos (AIDA, PAS).
-* ✅ **Worker a3 (Scriptwriter):** Qwen3 Max. (*Smoke pass: ~12s*). Redige roteiros PT-BR baseados na **Doutrina Harry Dry** (Concreto, Único, Falsificável). Aplica a Regra dos 83% e divide as cenas matematicamente para não estourar as APIs de vídeo.
-* ✅ **Worker a4 (Diretor de Arte):** Qwen3 Max orquestrando **Nano Banana 2**. Cria o Storyboard UGC (9:16) e extrai os *Start Frames* e *End Frames* para cada clipe, preparando o terreno visual.
-* ✅ **Worker a5 (Produtor Visual/Voz):** Aciona os motores de vídeo via FAL.ai baseando-se nos frames do a4. **Limites Rígidos de Tempo (Single-Shot):**
+* ✅ **Worker a3 (Scriptwriter):** Qwen3 Max. (*Smoke pass: ~12s*). Redige roteiros PT-BR baseados na **Doutrina Harry Dry** (Concreto, Único, Falsificável). Aplica a Regra dos 83%, os 3 Diagnósticos (que incorporam AIDA/PAS) e divide as cenas matematicamente para não estourar as APIs de vídeo.
+* ✅ **Worker a4 (Diretor de Arte):** Qwen3 Max orquestrando **Nano Banana 2**. Cria o Storyboard UGC (9:16) e extrai os *Start Frames* e *End Frames* para cada clipe, preparando o terreno visual. Referência estética: `shot on iPhone 17 Pro Max`.
+* ✅ **Worker a5 (Produtor Visual/Voz):** Aciona os motores de vídeo via FAL.ai baseando-se nos frames do a4. **Motor Padrão: Seedance 2.0** (troca autorizada pelo administrador). **Limites Rígidos de Tempo (Single-Shot):**
+  - **Seedance 2.0 (Padrão):** Máx 15s por cena (Atuação humana e sincronia labial).
   - **Kling 3.1:** Máx 10s por cena (Física ultrarrealista).
   - **Veo 3.1 Fast:** Máx 8s por cena (Planos cinematográficos).
-  - **Seedance 2.0:** Máx 15s por cena (Atuação humana e sincronia labial).
-* ✅ **Worker a6 (Montador CLI / Remotion):** Orquestra o framework Remotion. Gera a timeline final unindo os clipes, sincroniza as legendas dinâmicas com o áudio, insere a Redline (barra de progresso) e aplica o Unique Pixel Hash.
-* ⏳ **Worker a7 (Deployer):** Z-AI GLM 5.1. Responsável pelo upload técnico.
-  - **Regra de Postagem:** É terminantemente proibido publicar vídeos em modo "Public". Todo upload via API deve ser realizado com o parâmetro `post_mode: "DRAFT"`.
-  - **Confirmação:** Após o upload, deve reportar ao CEO que o vídeo está disponível para revisão manual no Seller Center.
+  - **Resolução Canônica:** 720x1280 (720p Vertical 9:16).
+* ✅ **Worker a6 (Montador CLI / Remotion):** Z-AI GLM 5.1. Orquestra o framework Remotion. Gera a timeline final unindo N clipes (número dinâmico conforme o storyboard do a3), sincroniza as legendas dinâmicas com o áudio, insere a Redline (barra de progresso) e aplica o Unique Pixel Hash (escala [1.005..1.015] + rotação [-0.15°..0.15°]). Exporta em 720x1280, 6-10 Mbps, com metadados de iPhone 17 Pro Max.
+* ✅ **Worker a7 (Delivery / Entrega):** Agente de Logística de Ativos. Transporta o vídeo finalizado da VPS Hostinger para o **Google Drive** do administrador via API. A postagem no TikTok é feita **manualmente** pelo administrador no celular, garantindo maior alcance orgânico e segurança de conta. Não há integração direta com a API do TikTok para upload.
 * ⏳ **Worker a8 (Analytics):** Gemma 4 (Rodando na VPS Hostinger). Minera os dados e clusteriza winners.
 
 ### 2.1. Matriz de Consistência Visual (O DNA)
 Para impedir *character drift* (mutações de rosto/roupa) e desperdício de fundos nas APIs de vídeo, o Worker a4 aplica um protocolo rígido obrigatório:
 1. **Character/Environment DNA:** O modelo Nano Banana 2 gera folhas de referência (Character Sheets 360º) para travar a identidade da influenciadora e do ambiente.
 2. **Start/End Frame Anchoring (Ancoragem):** O pipeline nunca pede para a IA de vídeo gerar do zero. O último frame (End Frame) do Vídeo 1 é matematicamente gerado para servir de referência base (Start Frame) para o Vídeo 2.
+
 ---
 
 ## 3. TikTok Analytics Dashboard (O Centro de Comando)
@@ -56,11 +57,11 @@ O sistema foi desenhado para suportar o roteamento dinâmico de dados para N con
 
 accounts: Tabela mestre para o gerenciamento de múltiplas lojas.
 
-Campos: id, handle (ex: @loja_top_br), access_token, tipo, timezone, status.
+Campos: id, handle (ex: @loja_top_br), tipo, timezone, status.
 
 videos: Registro central de toda a produção da fábrica. Todo vídeo é vinculado a uma conta.
 
-Campos: account_id (FK), tiktok_video_id, hook_id, script_id, persona_id, story_angle_id, data_postagem, post_status (DRAFT por padrão).
+Campos: account_id (FK), tiktok_video_id, hook_id, script_id, persona_id, story_angle_id, data_postagem, post_status, google_drive_file_link.
 
 video_metrics_daily: Captura diária da performance real extraída pelo Worker a8.
 
@@ -99,7 +100,7 @@ Campos base: label, descrição, tags, num_videos, total_views, avg_views.
 
 ## 4. Repositórios Externos, Skills e Integrações de Terceiros
 
-Para que o framework funcione fora do `dry_run` e gere valor real, o ecosssistema consome dependências externas vitais:
+Para que o framework funcione fora do `dry_run` e gere valor real, o ecossistema consome dependências externas vitais:
 
 * **Vídeo & Animação:**
   * `calesthio/OpenMontage`: (Diretório `workspace/video-renderer/`) Fornece estruturas e manifestos de montagem dinâmicos para o Remotion (Worker a6).
@@ -109,10 +110,11 @@ Para que o framework funcione fora do `dry_run` e gere valor real, o ecosssistem
   * `tiktok-viral-product-hunter`: Skill SCTM complementar para achar sinal de PMF.
 * **APIs Utilitárias:**
   * **Firecrawl API (`/scrape`):** Obrigatório para o Worker a0 quebrar as barreiras de JS Rendering nas páginas de produto.
-  * **Groq Whisper API (`whisper-large-v3`):** Para geração de legendas dinâmicas e text-on-screen com timestamps super precisos (palavra por palavra).
-  * **Airtable:** Utilizado na etapa de QC (Quality Control) para aprovação visual (preview inline) de assets antes de postar.
+  * **Groq Whisper API (`whisper-large-v3`):** Utilizada exclusivamente para **transcrição (Speech-to-Text)** dos áudios nativos gerados pelos motores de vídeo (Seedance/Kling). Gera legendas dinâmicas com timestamps palavra por palavra. **Não é utilizada para geração de voz (TTS).**
+* **Entrega de Ativos:**
+  * **Google Drive API:** Utilizada pelo Worker a7 para transportar o vídeo finalizado da VPS para o Drive do administrador. A postagem no TikTok é manual.
 * **Notificações:**
-  * `bytedance/deer-flow` (Módulo Telegram): Utilizado estritamente para o CEO disparar pings assíncronos de status e aprovações para o celular do admin.
+  * `bytedance/deer-flow` (Módulo Telegram): Utilizado estritamente para o CEO disparar pings assíncronos de status (ex: link do Google Drive pronto para download) e aprovações para o celular do admin.
 
 ---
 
@@ -139,17 +141,19 @@ O Worker a6 já compila o `RenderManifest` em testes (`dry_run` = verde), mas **
 
 **A arquitetura de deploy (`scripts/deploy-render.sh`):**
 A arquitetura proíbe renderização pesada do Remotion na máquina local (Mac) para não travar o loop de orquestração.
-O fluxo mandatório (ainda pendente de código) é:
+O fluxo mandatório é:
 1. `rsync` silencioso transferindo os assets e o manifesto gerados localmente para a VPS Hostinger (100.72.40.35 via Tailscale).
 2. O script aciona remotamente o `remotion render` na VPS.
 3. O script faz o `pull` do `.mp4` compilado, devolvendo-o para a pasta `/output/publish_ready/` na máquina host.
+4. O Worker a7 (Delivery) pega o vídeo da pasta e faz o upload para o Google Drive do administrador.
 
 ---
 
 ## 7. Roadmap Arquitetural (Ordem de Execução Baseada na Auditoria)
 
-1. **Desbloquear Produção a6 (CRÍTICO):** Criar `scripts/deploy-render.sh` e integrar a chamada final do `@remotion/renderer` no `worker-a6.ts`.
-2. **Integração de Repositórios Ausentes:** Clonar `OpenMontage`, importar `@trycua/launchpad`, puxar as skills `last30days` e instalar módulo do Telegram.
-3. **Evolução do Worker a3:** Implementar as lógicas dos *3 Diagnósticos* e *Regra dos 83%* exigidas no copy.
-4. **Ativação da Entrada do Funil (Worker a0):** Ligar o Minimax com Firecrawl e Skills SCTM para iniciar o fluxo contínuo real.
-5. **UI / Dashboard:** Codificar o Next.js mapeando as lógicas da seção §3.
+1. **Desbloquear Produção a6 (CRÍTICO):** Integrar a chamada final do `@remotion/renderer` no `worker-a6.ts` com os parâmetros corretos (720x1280, 6-10 Mbps, Unique Pixel Hash via escala+rotação).
+2. **Ativar Worker a7 (Delivery):** Implementar o fluxo Google Drive API no `worker-a7.ts` para transportar o vídeo da VPS para o Drive.
+3. **Integração de Repositórios Ausentes:** Clonar `OpenMontage`, importar `@trycua/launchpad`, puxar as skills `last30days` e instalar módulo do Telegram.
+4. **Evolução do Worker a3:** Implementar as lógicas dos *3 Diagnósticos* e *Regra dos 83%* exigidas no copy.
+5. **Ativação da Entrada do Funil (Worker a0):** Ligar o Gemini 3.0 Flash com Firecrawl e Skills SCTM para iniciar o fluxo contínuo real.
+6. **UI / Dashboard:** Codificar o Next.js mapeando as lógicas da seção §3.
