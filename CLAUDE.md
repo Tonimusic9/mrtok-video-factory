@@ -34,7 +34,7 @@ Worker (a5 - Produtor Visual): Motores Nativos (Seedance 2.0 como padrão, Kling
 
 Worker (a6 - Montador Remotion): Z-AI GLM 5.1 - Gera o manifesto de montagem (JSON) e executa o framework Remotion.
 
-Worker (a7 - Delivery): Agente de Entrega via Google Drive. Transporta o vídeo finalizado da VPS para o Google Drive do administrador para postagem manual no celular.
+Worker (a7 - Delivery): Agente de Entrega via Telegram. Envia o vídeo finalizado da VPS direto ao celular do administrador via método `sendDocument` (NUNCA `sendVideo`, que recomprime e destrói o Unique Pixel Hash).
 
 Worker (a8 - Analytics): DeepSeek V3.1 via OpenRouter - Minera dados e clusteriza winners. Migrado do Gemma 4 local para evitar contenção de RAM na VPS durante renders Remotion do Worker a6.
 
@@ -62,7 +62,7 @@ Regra de Ouro (Dados): Workers possuem ZERO permissão de escrita direta na crea
 
 Regra de Ouro (ROI & Custos): É estritamente proibido disparar chamadas de API de vídeo (Kling/Veo/Seedance) sem o status `PASS` do Gatekeeper QC (Fase 1) nas imagens base SHxA (Start Frame) e SHxB (End Frame).
 
-Regra de Ouro (Entrega): O fluxo de publicação é VPS → Google Drive → postagem manual pelo administrador no celular. Não há integração direta com a API do TikTok para upload.
+Regra de Ouro (Entrega): O fluxo de publicação é VPS → Telegram `sendDocument` → download manual no celular pelo administrador → postagem manual no TikTok. É obrigatório o uso de `sendDocument` (nunca `sendVideo`) para preservar o Unique Pixel Hash injetado pelo Remotion. Não há integração direta com a API do TikTok para upload.
 
 Nota sobre Whisper: A Groq Whisper API (`whisper-large-v3`) é utilizada exclusivamente para **transcrição** (Speech-to-Text) dos áudios nativos gerados pelos motores de vídeo. Não é utilizada para geração de voz (TTS).
 
@@ -81,4 +81,4 @@ O ecossistema depende das seguintes chaves no `.env.local` (validadas via `env.t
 - `FIRECRAWL_API_KEY` (Para o Worker a0 realizar o bypass de JS no scraping)
 - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (Para banco de dados e gestão multicontas)
 - `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` (Para o CEO enviar pings de rascunhos pendentes)
-- `GOOGLE_DRIVE_CREDENTIALS` (Para o Worker a7 realizar o upload do vídeo finalizado)
+- O Worker a7 (Delivery) envia o `.mp4` final via `sendDocument` do Telegram reutilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` acima. Nenhuma credencial adicional.

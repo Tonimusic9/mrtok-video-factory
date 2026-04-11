@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Worker a7 — chaves privadas de Service Account (NUNCA commitar)
+/secrets/
+
 # MrTok — saídas e assets brutos (manter apenas .gitkeep/README)
 /output/*
 !/output/.gitkeep

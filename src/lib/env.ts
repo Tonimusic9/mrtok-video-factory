@@ -25,6 +25,11 @@ const envSchema = z.object({
   VPS_TAILSCALE_IP: z.string().min(1),
   GEMMA_LOCAL_URL: z.string().url(),
 
+  // Worker a7 (Delivery) — Telegram sendDocument
+  // Reutiliza TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID já declarados acima.
+  // Obrigatório: usar sendDocument (não sendVideo) para preservar metadata
+  // do Remotion (Unique Pixel Hash) — Telegram não recomprime documents.
+
   // Upload-Post (distribuição multi-plataforma — Tarefa 3)
   UPLOAD_POST_API_KEY: z.string().min(1, "UPLOAD_POST_API_KEY ausente"),
   UPLOAD_POST_BASE_URL: z

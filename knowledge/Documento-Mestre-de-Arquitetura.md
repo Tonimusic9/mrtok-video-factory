@@ -40,7 +40,7 @@ A arquitetura resolve isso com:
   - **Veo 3.1 Fast:** Máx 8s por cena (Planos cinematográficos).
   - **Resolução Canônica:** 720x1280 (720p Vertical 9:16).
 * ✅ **Worker a6 (Montador CLI / Remotion):** Z-AI GLM 5.1. Orquestra o framework Remotion. Gera a timeline final unindo N clipes (número dinâmico conforme o storyboard do a3), sincroniza as legendas dinâmicas com o áudio, insere a Redline (barra de progresso) e aplica o Unique Pixel Hash (escala [1.005..1.015] + rotação [-0.15°..0.15°]). Exporta em 720x1280, 6-10 Mbps, com metadados de iPhone 17 Pro Max.
-* ✅ **Worker a7 (Delivery / Entrega):** Agente de Logística de Ativos. Transporta o vídeo finalizado da VPS Hostinger para o **Google Drive** do administrador via API. A postagem no TikTok é feita **manualmente** pelo administrador no celular, garantindo maior alcance orgânico e segurança de conta. Não há integração direta com a API do TikTok para upload.
+* ✅ **Worker a7 (Delivery / Entrega):** Agente de Logística de Mensageria. Transporta o vídeo finalizado da VPS Hostinger direto ao celular do administrador via **Telegram `sendDocument`** (nunca `sendVideo`, que recomprime e destrói o Unique Pixel Hash). Reutiliza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` já em uso pelo CEO. A postagem no TikTok é feita **manualmente** pelo administrador no celular, garantindo maior alcance orgânico e segurança de conta. Não há integração direta com a API do TikTok para upload. **Decisão de 2026-04-11:** pivot de Google Drive para Telegram — elimina o step manual de "abrir Drive → baixar → postar", entregando o `.mp4` direto na notificação push do celular.
 * ⏳ **Worker a8 (Analytics):** DeepSeek V3.1 via OpenRouter. Minera dados do Supabase (`video_metrics_daily`) e clusteriza winners. Stateless — não reside na VPS, liberando RAM dedicada ao Remotion (a6).
 
 ### 2.1. Matriz de Consistência Visual (O DNA)
@@ -114,7 +114,7 @@ Para que o framework funcione fora do `dry_run` e gere valor real, o ecossistema
   * **Firecrawl API (`/scrape`):** Obrigatório para o Worker a0 quebrar as barreiras de JS Rendering nas páginas de produto.
   * **Groq Whisper API (`whisper-large-v3`):** Utilizada exclusivamente para **transcrição (Speech-to-Text)** dos áudios nativos gerados pelos motores de vídeo (Seedance/Kling). Gera legendas dinâmicas com timestamps palavra por palavra. **Não é utilizada para geração de voz (TTS).**
 * **Entrega de Ativos:**
-  * **Google Drive API:** Utilizada pelo Worker a7 para transportar o vídeo finalizado da VPS para o Drive do administrador. A postagem no TikTok é manual.
+  * **Telegram Bot API (`sendDocument`):** Utilizada pelo Worker a7 para transportar o vídeo finalizado da VPS direto ao celular do administrador sem recompressão. A postagem no TikTok é manual.
 * **Notificações:**
   * `bytedance/deer-flow` (Módulo Telegram): Utilizado estritamente para o CEO disparar pings assíncronos de status (ex: link do Google Drive pronto para download) e aprovações para o celular do admin.
 
@@ -147,14 +147,14 @@ O fluxo mandatório é:
 1. `rsync` silencioso transferindo os assets e o manifesto gerados localmente para a VPS Hostinger (100.72.40.35 via Tailscale).
 2. O script aciona remotamente o `remotion render` na VPS.
 3. O script faz o `pull` do `.mp4` compilado, devolvendo-o para a pasta `/output/publish_ready/` na máquina host.
-4. O Worker a7 (Delivery) pega o vídeo da pasta e faz o upload para o Google Drive do administrador.
+4. O Worker a7 (Delivery) pega o vídeo da pasta e envia via Telegram `sendDocument` direto ao celular do administrador (zero recompressão, hash preservada).
 
 ---
 
 ## 7. Roadmap Arquitetural (Ordem de Execução Baseada na Auditoria)
 
 1. **Desbloquear Produção a6 (CRÍTICO):** Integrar a chamada final do `@remotion/renderer` no `worker-a6.ts` com os parâmetros corretos (720x1280, 6-10 Mbps, Unique Pixel Hash via escala+rotação).
-2. **Ativar Worker a7 (Delivery):** Implementar o fluxo Google Drive API no `worker-a7.ts` para transportar o vídeo da VPS para o Drive.
+2. **Ativar Worker a7 (Delivery):** Implementar o fluxo Telegram `sendDocument` no `worker-a7.ts` para transportar o vídeo da VPS direto ao celular do admin.
 3. **Integração de Repositórios Ausentes:** Clonar `OpenMontage`, importar `@trycua/launchpad`, puxar as skills `last30days` e instalar módulo do Telegram.
 4. **Evolução do Worker a3:** Implementar as lógicas dos *3 Diagnósticos* e *Regra dos 83%* exigidas no copy.
 5. **Ativação da Entrada do Funil (Worker a0):** Ligar o Gemini 3.0 Flash com Firecrawl e Skills SCTM para iniciar o fluxo contínuo real.
