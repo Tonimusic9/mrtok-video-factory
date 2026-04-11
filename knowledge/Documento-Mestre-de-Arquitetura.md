@@ -23,6 +23,8 @@ A arquitetura resolve isso com:
 
 **Nota Histórica:** O Worker a2 (Framework de Venda / Minimax M2.7) foi descontinuado. Sua função de estruturar copy com frameworks clássicos (AIDA, PAS) foi integralmente absorvida pelos 3 Diagnósticos Obrigatórios do Worker a3.
 
+**Nota Histórica (2026-04-11):** O Worker a8 (Analytics) migrou de **Gemma 4** (residente na VPS Hostinger) para **DeepSeek V3.1 via OpenRouter**, prevenindo OOM durante renders do Remotion no Worker a6. A proposta original era adotar DeepSeek V4, mas o modelo ainda não estava disponível no OpenRouter na data da migração (Reuters/The Information, 03/04/2026, indicava lançamento iminente). V3.1 foi escolhido como substituto imediato por já estar em produção no roteador.
+
 ### O Cérebro (Orquestração/QC e Comunicação)
 * **CEO e Gatekeeper (QC):** Claude Opus 4.6 (API Direta Anthropic). Delega tarefas, prioriza a fila e atua como Auditor Visual implacável em duas fases: **Fase 1 (Imagens)** — executada nativamente pelo Opus, reprovando falhas de continuidade antes do render; **Fase 2 (Vídeo)** — delegada ao Gemini 3.0 Flash para análise de movimento e mutações pós-render. Nunca processa código pesado.
 * **Regra de Comunicação (Single Point of Contact):** O CEO é a **ÚNICA** entidade do sistema autorizada a acionar o módulo do Telegram. Todos os Workers (a0 ao a8) operam em silêncio absoluto. O CEO centraliza os logs e envia apenas pings assíncronos executivos ao Administrador (ex: link do Google Drive pronto para download, alertas de erro crítico na API ou pedidos de aprovação final).
@@ -39,7 +41,7 @@ A arquitetura resolve isso com:
   - **Resolução Canônica:** 720x1280 (720p Vertical 9:16).
 * ✅ **Worker a6 (Montador CLI / Remotion):** Z-AI GLM 5.1. Orquestra o framework Remotion. Gera a timeline final unindo N clipes (número dinâmico conforme o storyboard do a3), sincroniza as legendas dinâmicas com o áudio, insere a Redline (barra de progresso) e aplica o Unique Pixel Hash (escala [1.005..1.015] + rotação [-0.15°..0.15°]). Exporta em 720x1280, 6-10 Mbps, com metadados de iPhone 17 Pro Max.
 * ✅ **Worker a7 (Delivery / Entrega):** Agente de Logística de Ativos. Transporta o vídeo finalizado da VPS Hostinger para o **Google Drive** do administrador via API. A postagem no TikTok é feita **manualmente** pelo administrador no celular, garantindo maior alcance orgânico e segurança de conta. Não há integração direta com a API do TikTok para upload.
-* ⏳ **Worker a8 (Analytics):** Gemma 4 (Rodando na VPS Hostinger). Minera os dados e clusteriza winners.
+* ⏳ **Worker a8 (Analytics):** DeepSeek V3.1 via OpenRouter. Minera dados do Supabase (`video_metrics_daily`) e clusteriza winners. Stateless — não reside na VPS, liberando RAM dedicada ao Remotion (a6).
 
 ### 2.1. Matriz de Consistência Visual (O DNA)
 Para impedir *character drift* (mutações de rosto/roupa) e desperdício de fundos nas APIs de vídeo, o Worker a4 aplica um protocolo rígido obrigatório:

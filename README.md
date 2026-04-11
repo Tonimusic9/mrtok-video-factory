@@ -5,7 +5,7 @@ Fábrica autônoma de UGC orquestrada via **OpenClaw**, desenhada para alta conv
 ## Infraestrutura Híbrida
 - **Cérebro / QC** — Claude Opus 4.6 (API Anthropic)
 - **Músculos** — OpenRouter (GPT-5.4 · Qwen 3.6 · Minimax 2.7 · Gemini 3 Flash)
-- **Analytics** — Gemma 4 local na VPS Hostinger (Tailscale `100.72.40.35`)
+- **Analytics** — DeepSeek V3.1 via OpenRouter (stateless, fora da VPS)
 
 ## Pilares de Blindagem
 1. **Compliance TikTok Shop** — Agente 3 proíbe promessas irreais; `visual_prompt` sempre reflete o produto físico real.

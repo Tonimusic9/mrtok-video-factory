@@ -36,7 +36,7 @@ Worker (a6 - Montador Remotion): Z-AI GLM 5.1 - Gera o manifesto de montagem (JS
 
 Worker (a7 - Delivery): Agente de Entrega via Google Drive. Transporta o vídeo finalizado da VPS para o Google Drive do administrador para postagem manual no celular.
 
-Worker (a8 - Analytics): Gemma 4 (Rodando na VPS Hostinger) - Minera dados e clusteriza winners.
+Worker (a8 - Analytics): DeepSeek V3.1 via OpenRouter - Minera dados e clusteriza winners. Migrado do Gemma 4 local para evitar contenção de RAM na VPS durante renders Remotion do Worker a6.
 
 Padrão de Execução: Uso do runner runAgentTick com Claim Atômico via Supabase (UPDATE...RETURNING).
 
