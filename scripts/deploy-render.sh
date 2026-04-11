@@ -79,8 +79,12 @@ echo "[deploy-render] 📦 [2/5] rsync UP (remotion/src + assets + manifest)..."
 SECONDS=0
 # 2a. Código da composição Remotion (Root.tsx, MrTokVideo.tsx, PixelHashWrapper.tsx)
 rsync -azq --delete "$LOCAL_REMOTION_SRC" "${VPS_USER}@${VPS_IP}:${REMOTE_WORKSPACE}src/"
-# 2b. MP4s brutos do FAL.ai baixados pelo worker
-rsync -azq --delete "$LOCAL_ASSETS_DIR" "${VPS_USER}@${VPS_IP}:${REMOTE_WORKSPACE}assets/"
+# 2b. MP4s brutos do FAL.ai baixados pelo worker.
+#     Destino: public/assets/ — o Remotion serve `public/` como raiz do webpack
+#     dev server interno, então `<OffthreadVideo src="assets/hook.mp4" />` do
+#     manifest.json resolve para public/assets/hook.mp4 no bundle.
+ssh "${VPS_USER}@${VPS_IP}" "mkdir -p ${REMOTE_WORKSPACE}public/assets"
+rsync -azq --delete "$LOCAL_ASSETS_DIR" "${VPS_USER}@${VPS_IP}:${REMOTE_WORKSPACE}public/assets/"
 # 2c. Manifest JSON com clips reescritos para caminhos relativos
 rsync -azq "$LOCAL_MANIFEST" "${VPS_USER}@${VPS_IP}:${REMOTE_WORKSPACE}manifest.json"
 echo "[rsync_up] done in ${SECONDS}s"
