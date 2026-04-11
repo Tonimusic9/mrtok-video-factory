@@ -71,8 +71,8 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
         human_imperfection: "Gagueja levemente no espera e pausa curta",
       },
       video_generation: {
-        provider: "seedance",
-        fal_model_slug: "fal-ai/seedance-video-lite",
+        provider: "kling",
+        fal_model_slug: "fal-ai/kling-video/v2.1/standard",
         duration_seconds: 3,
         aspect_ratio: "9:16",
         motion_intensity: "high",
@@ -96,8 +96,8 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
         human_imperfection: "Leve aceleração no meio da frase",
       },
       video_generation: {
-        provider: "seedance",
-        fal_model_slug: "fal-ai/seedance-video-lite",
+        provider: "kling",
+        fal_model_slug: "fal-ai/kling-video/v2.1/standard",
         duration_seconds: 5,
         aspect_ratio: "9:16",
         motion_intensity: "low",
@@ -121,8 +121,8 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
         human_imperfection: "Tom levemente empolgado no final",
       },
       video_generation: {
-        provider: "seedance",
-        fal_model_slug: "fal-ai/seedance-video-lite",
+        provider: "kling",
+        fal_model_slug: "fal-ai/kling-video/v2.1/standard",
         duration_seconds: 3,
         aspect_ratio: "9:16",
         motion_intensity: "medium",
@@ -138,9 +138,9 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
   ],
   global: {
     voice_locale: "pt-BR",
-    default_video_provider: "seedance",
+    default_video_provider: "kling",
     fal_gateway: "fal.ai",
-    fallback_provider_chain: ["seedance", "kling", "nano-banana"],
+    fallback_provider_chain: ["kling", "seedance", "nano-banana"],
   },
 };
 
