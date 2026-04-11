@@ -81,8 +81,8 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
         human_imperfection: "Leve aceleração no meio da frase",
       },
       video_generation: {
-        provider: "nano-banana",
-        fal_model_slug: "fal-ai/nano-banana-pro",
+        provider: "hailuo",
+        fal_model_slug: "fal-ai/minimax-video",
         duration_seconds: 15,
         aspect_ratio: "9:16",
         motion_intensity: "low",
@@ -125,7 +125,7 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
     voice_locale: "pt-BR",
     default_video_provider: "kling",
     fal_gateway: "fal.ai",
-    fallback_provider_chain: ["kling", "seedance", "nano-banana"],
+    fallback_provider_chain: ["kling", "seedance", "veo"],
   },
 };
 

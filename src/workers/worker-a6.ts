@@ -51,6 +51,17 @@ interface ShotFalResult {
 
 /**
  * Gera vídeo de um shot via FAL.ai, tentando fallback chain em caso de falha.
+ *
+ * Regra de prioridade de slug:
+ *   - Para o provider PRIMÁRIO usamos o `primaryFalSlug` que veio no payload
+ *     (`shot.video_generation.fal_model_slug`) — é a fonte da verdade do
+ *     spec já validada pelo cross-check em `productionSpec.ts`.
+ *   - Para providers da cadeia de FALLBACK usamos o map canônico
+ *     `FAL_SLUG_BY_PROVIDER`, já que não temos slug explícito no payload.
+ *
+ * Segurança: a cadeia de fallback é filtrada para remover providers que não
+ * estão em `FAL_SLUG_BY_PROVIDER` (ex: resíduo de `nano-banana` em specs
+ * antigos) — evita chamar endpoint de imagem esperando vídeo.
  */
 async function generateShotVideo(
   block: "hook" | "body" | "cta",
@@ -58,13 +69,19 @@ async function generateShotVideo(
   negativePrompt: string,
   durationSeconds: number,
   primaryProvider: VideoProvider,
+  primaryFalSlug: string,
   fallbackChain: VideoProvider[],
 ): Promise<ShotFalResult> {
-  const providers = [primaryProvider, ...fallbackChain.filter((p) => p !== primaryProvider)];
+  const validFallbacks = fallbackChain.filter(
+    (p) => p !== primaryProvider && p in FAL_SLUG_BY_PROVIDER,
+  );
+  const attempts: { provider: VideoProvider; slug: string }[] = [
+    { provider: primaryProvider, slug: primaryFalSlug },
+    ...validFallbacks.map((p) => ({ provider: p, slug: FAL_SLUG_BY_PROVIDER[p] })),
+  ];
   let lastError: Error | null = null;
 
-  for (const provider of providers) {
-    const slug = FAL_SLUG_BY_PROVIDER[provider];
+  for (const { provider, slug } of attempts) {
     try {
       const result: FalJobResult = await submitAndPoll({
         slug,
@@ -123,6 +140,7 @@ export function runWorkerA6Tick(args: AgentTickArgs = {}): Promise<AgentTickResu
               shot.video_generation.negative_prompt,
               shot.video_generation.duration_seconds,
               shot.video_generation.provider,
+              shot.video_generation.fal_model_slug,
               spec.global.fallback_provider_chain,
             ),
           );

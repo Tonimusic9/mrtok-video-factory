@@ -140,7 +140,7 @@ const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
     voice_locale: "pt-BR",
     default_video_provider: "kling",
     fal_gateway: "fal.ai",
-    fallback_provider_chain: ["kling", "seedance", "nano-banana"],
+    fallback_provider_chain: ["kling", "seedance", "veo"],
   },
 };
 

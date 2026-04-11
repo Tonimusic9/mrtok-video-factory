@@ -40,12 +40,15 @@ import {
 } from "@/lib/agents/imagePrompt";
 
 // --- Catálogo de providers de vídeo (FAL.ai) -------------------------------
+// IMPORTANTE: esta lista contém APENAS motores de VÍDEO. O `nano-banana-pro`
+// foi removido em abr/2026 por ser um modelo de IMAGEM — sua presença na
+// fallback chain causava falha em runtime no worker a6 ao tentar renderizar
+// vídeo via endpoint de imagem.
 export const VIDEO_PROVIDERS = [
   "kling",
   "seedance",
   "hailuo",
   "veo",
-  "nano-banana",
 ] as const;
 export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
 
@@ -53,13 +56,16 @@ export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
  * Mapa canônico provider → slug FAL.ai. Fonte única da verdade — usado tanto
  * pelo prompt (para o LLM escolher coerentemente) quanto pelo cross-check
  * fail-closed em `generateProductionSpec()`.
+ *
+ * NOTA: o worker a6 prioriza o `fal_model_slug` que vem no payload do shot
+ * (fonte da verdade do spec); este mapa é usado apenas como resolver de
+ * slug para providers na cadeia de fallback.
  */
 export const FAL_SLUG_BY_PROVIDER: Record<VideoProvider, string> = {
   kling: "fal-ai/kling-video/v2.1/standard",
   seedance: "fal-ai/seedance-video-lite",
   hailuo: "fal-ai/minimax-video",
   veo: "fal-ai/veo3-fast",
-  "nano-banana": "fal-ai/nano-banana-pro",
 };
 
 // --- Contrato de saída -----------------------------------------------------
@@ -147,7 +153,7 @@ REGRAS DE VÍDEO (FAL.ai):
 - Catálogo de providers permitidos e seus slugs FAL obrigatórios:
 ${PROVIDER_CATALOG_FOR_PROMPT}
 - \`provider\` DEVE ser um dos 5 acima e \`fal_model_slug\` DEVE ser EXATAMENTE o slug canônico listado — qualquer divergência é falha fatal.
-- Escolha por tipo de shot (heurística): hook com movimento/disruptor → \`kling\` ou \`seedance\`; body em close/demonstração estática → \`nano-banana\` ou \`hailuo\`; CTA curto → \`seedance\` ou \`kling\`; \`veo\` como opção premium/fallback.
+- Escolha por tipo de shot (heurística): hook com movimento/disruptor → \`kling\` ou \`seedance\`; body em close/demonstração estática → \`hailuo\` ou \`seedance\`; CTA curto → \`seedance\` ou \`kling\`; \`veo\` como opção premium/fallback.
 - \`motion_intensity\`: \`low\` para close facial estático, \`medium\` default, \`high\` para hooks com ação forte.
 - \`seed\`: inteiro positivo determinístico (0 a 2147483647).
 - \`aspect_ratio\`: sempre a string literal "9:16".
@@ -230,7 +236,7 @@ function buildUserPrompt(input: ProductionSpecInput): string {
     {
       "block": "body",
       "voice": { "voice_id": "pt-BR-...", "ssml": "...", "pacing_wpm": 155, "emphasis": ["..."], "pauses_ms": [], "human_imperfection": "..." },
-      "video_generation": { "provider": "nano-banana", "fal_model_slug": "fal-ai/nano-banana-pro", "duration_seconds": ${script.body.duration_seconds}, "aspect_ratio": "9:16", "motion_intensity": "low", "seed": 789012, "image_prompt": "...", "negative_prompt": "...", "motion_description": "..." }
+      "video_generation": { "provider": "hailuo", "fal_model_slug": "fal-ai/minimax-video", "duration_seconds": ${script.body.duration_seconds}, "aspect_ratio": "9:16", "motion_intensity": "low", "seed": 789012, "image_prompt": "...", "negative_prompt": "...", "motion_description": "..." }
     },
     {
       "block": "cta",
