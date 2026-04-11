@@ -58,11 +58,30 @@ export type RenderManifest = z.infer<typeof renderManifestSchema>;
 
 // --- Schemas de payload/resultado do worker ---------------------------------
 
+/**
+ * Metadado de delivery que viaja junto com a task do a6 para habilitar o
+ * chaining automático a6 → a7 (ver `src/lib/taskChaining.ts`).
+ *
+ * Estes campos NÃO vivem no `MontadorResult`, na `creative_matrix` ou no
+ * `production_spec`, portanto quem cria a task do a6 (CEO, API, smoke) é
+ * responsável por carregá-los aqui quando quiser delivery autônomo. Se
+ * ausente, o runner não injeta nada e o fluxo permanece manual.
+ */
+export const deliveryContextSchema = z.object({
+  account_id: z.string().min(1),
+  account_handle: z.string().min(1),
+  product_name: z.string().min(1),
+  caption: z.string().optional(),
+});
+export type DeliveryContext = z.infer<typeof deliveryContextSchema>;
+
 export const montadorTaskPayloadSchema = z.object({
   production_spec: productionSpecOutputSchema,
   creative_matrix_id: z.string().uuid().optional(),
   source_task_id: z.string().uuid().optional(),
   dry_run: z.boolean().optional(),
+  /** Opcional: presença habilita injeção automática de task a7 pós-done. */
+  delivery_context: deliveryContextSchema.optional(),
 });
 export type MontadorTaskPayload = z.infer<typeof montadorTaskPayloadSchema>;
 

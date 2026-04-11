@@ -18,6 +18,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { chainNextTask } from "@/lib/taskChaining";
 import { notifyAsync } from "@/lib/telegram";
 import type { Database, Json, TaskAgent, TaskQueueRow } from "@/types/database";
 
@@ -197,6 +198,32 @@ async function processOne<TPayload, TResult extends Json>(
         status: "failed",
         error: `task_update_failed: ${doneErr.message}`,
       };
+    }
+
+    // 5a. Chaining autônomo: se houver handler registrado para este agente,
+    //     enfileira a próxima task da esteira (ex.: a6 → a7). Nunca derruba
+    //     o tick — o vídeo já está `done` no banco e delivery manual continua
+    //     viável caso a injeção falhe.
+    try {
+      const chain = await chainNextTask(config.agent, row, resultJson, supabase);
+      if (chain.injected) {
+        console.log(
+          `[runner:${config.agent}] 🔗 chaining → ${chain.nextAgent} task=${chain.nextTaskId} (parent=${row.id})`,
+        );
+      } else if (
+        chain.reason !== "sem_handler_registrado" &&
+        chain.reason !== "sem_delivery_context"
+      ) {
+        console.warn(
+          `[runner:${config.agent}] ⚠️ chaining pulado: ${chain.reason} (parent=${row.id})`,
+        );
+        notifyAsync(
+          `⚠️ *MrTok ${config.label}* chaining não injetado\ntask: \`${row.id}\`\nmotivo: \`${chain.reason}\``,
+        );
+      }
+    } catch (chainErr) {
+      const msg = chainErr instanceof Error ? chainErr.message : String(chainErr);
+      console.error(`[runner:${config.agent}] ❌ chaining explodiu: ${msg}`);
     }
 
     return { task_id: row.id, status: "done", result: resultJson };

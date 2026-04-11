@@ -42,6 +42,15 @@ loadEnv();
 
 const PROJECT_ID = "mrtok-smoke-a6";
 
+// --- Fixture: delivery_context que habilita o chaining a6 → a7 --------------
+// Presença deste bloco faz o runner injetar uma task a7 pending após o done
+// do a6. O smoke NÃO drena a fila do a7 (dry_run evita envio real ao Telegram).
+const FIXTURE_DELIVERY_CONTEXT = {
+  account_id: "acc_smoke_a6",
+  account_handle: "@smoke_a6_chain",
+  product_name: "Máscara Argila Verde Smoke Chain",
+} as const;
+
 // --- Fixture: ProductionSpec completa (output típico do a5) ------------------
 const FIXTURE_PRODUCTION_SPEC: ProductionSpecOutput = {
   shots: [
@@ -195,6 +204,7 @@ async function main() {
       payload: {
         production_spec: FIXTURE_PRODUCTION_SPEC,
         dry_run: true,
+        delivery_context: FIXTURE_DELIVERY_CONTEXT,
       },
     })
     .select("id")
@@ -359,11 +369,61 @@ async function main() {
   }
   console.log("[smoke-a6] ✅ Regra de Ouro intacta — creative_matrix inalterada");
 
+  // --- 7b. Chaining a6 → a7 --------------------------------------------------
+  // Com `delivery_context` no payload, o runner deve ter injetado uma task
+  // a7 pending linkada via parent_task_id. O smoke não drena a fila do a7.
+  const { data: childRows, error: childErr } = await supabase
+    .from("task_queue")
+    .select("id, agent, status, payload, parent_task_id")
+    .eq("parent_task_id", insertedId);
+  if (childErr) {
+    console.error(`[smoke-a6] ❌ leitura de tasks filhas: ${childErr.message}`);
+    process.exit(3);
+  }
+  if (!childRows || childRows.length !== 1) {
+    console.error(
+      `[smoke-a6] ❌ chaining esperado 1 task a7 filha, recebido ${childRows?.length ?? 0}`,
+    );
+    process.exit(3);
+  }
+  const child = childRows[0];
+  if (child.agent !== "a7") {
+    console.error(`[smoke-a6] ❌ task filha com agent='${child.agent}', esperado 'a7'`);
+    process.exit(3);
+  }
+  if (child.status !== "pending") {
+    console.error(`[smoke-a6] ❌ task a7 filha com status='${child.status}', esperado 'pending'`);
+    process.exit(3);
+  }
+  const childPayload = child.payload as Record<string, unknown> | null;
+  if (
+    !childPayload ||
+    typeof childPayload.output_video_url !== "string" ||
+    childPayload.output_video_url.length === 0
+  ) {
+    console.error("[smoke-a6] ❌ task a7 filha sem output_video_url válido");
+    process.exit(3);
+  }
+  if (
+    childPayload.account_id !== FIXTURE_DELIVERY_CONTEXT.account_id ||
+    childPayload.account_handle !== FIXTURE_DELIVERY_CONTEXT.account_handle ||
+    childPayload.product_name !== FIXTURE_DELIVERY_CONTEXT.product_name
+  ) {
+    console.error(
+      `[smoke-a6] ❌ delivery_context não propagado corretamente: ${JSON.stringify(childPayload)}`,
+    );
+    process.exit(3);
+  }
+  console.log(
+    `[smoke-a6] 🔗 chaining ok — task a7 pending ${child.id} (parent=${insertedId})`,
+  );
+
   // --- 8. Cleanup final ------------------------------------------------------
+  // Deleta a task a6 + a task a7 filha injetada pelo chaining.
   const { error: finalDelErr } = await supabase
     .from("task_queue")
     .delete()
-    .eq("id", insertedId);
+    .eq("project_id", PROJECT_ID);
   if (finalDelErr) {
     console.error(`[smoke-a6] ❌ cleanup final task_queue: ${finalDelErr.message}`);
     process.exit(5);
