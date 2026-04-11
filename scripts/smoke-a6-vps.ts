@@ -3,8 +3,9 @@
  * ffmpeg/rsync_down) sem tocar em FAL.ai nem GLM 5.1.
  *
  * Estratégia: hand-craft um RenderManifest válido com `video_url` apontando
- * para MP4s públicos estáveis (bucket Google commondatastorage — test videos
- * canônicos). Chama `runRemoteRender` direto, pulando todo o pipeline FAL.
+ * para um HTTP server EFÊMERO in-process que serve um MP4 gerado localmente
+ * via ffmpeg (`testsrc` lavfi, 720×1280 30fps). Zero dependência externa.
+ * Chama `runRemoteRender` direto, pulando todo o pipeline FAL.
  *
  * O que valida:
  *   1. Download dos MP4s "mock" para workspace/video-renderer/assets/
@@ -29,7 +30,12 @@
  *   3 = manifest hand-crafted não bate com renderManifestSchema
  */
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { createServer, type AddressInfo } from "node:http";
+import { tmpdir } from "node:os";
+import * as path from "node:path";
 
 function loadEnv(): void {
   const raw = readFileSync(".env.local", "utf-8");
@@ -46,13 +52,55 @@ function loadEnv(): void {
 
 loadEnv();
 
-// MP4s públicos estáveis (Google Cloud Storage bucket público de test videos).
-// 720p, ~2.5MB cada, sem auth, TTL infinito. Canônicos para smoke tests.
-const PUBLIC_MP4_SAMPLES = {
-  hook: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  body: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  cta: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-};
+/**
+ * Gera um MP4 de teste via ffmpeg (`testsrc` lavfi, 720×1280, 5s, 30fps).
+ * Retorna o caminho do arquivo gerado.
+ */
+function generateTestMp4(): string {
+  const outPath = path.join(tmpdir(), `mrtok-smoke-vps-${Date.now()}.mp4`);
+  execFileSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=duration=5:size=720x1280:rate=30",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      outPath,
+    ],
+    { stdio: ["ignore", "ignore", "ignore"] },
+  );
+  return outPath;
+}
+
+/**
+ * Sobe um HTTP server efêmero em porta aleatória que serve o mesmo buffer
+ * de MP4 para qualquer path requisitado. Retorna a URL base e um cleanup.
+ */
+async function startMp4Server(buffer: Buffer): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  const server = createServer((req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "video/mp4",
+      "Content-Length": String(buffer.length),
+    });
+    res.end(buffer);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    baseUrl: `http://127.0.0.1:${port}`,
+    close: () =>
+      new Promise<void>((resolve, reject) =>
+        server.close((err) => (err ? reject(err) : resolve())),
+      ),
+  };
+}
 
 async function main() {
   const t0 = Date.now();
@@ -60,6 +108,21 @@ async function main() {
   const { runRemoteRender } = await import("../src/lib/agents/remoteRender");
   const { renderManifestSchema } = await import("../src/lib/agents/renderManifest");
   type RenderManifestT = import("../src/lib/agents/renderManifest").RenderManifest;
+
+  // --- 0. Gera MP4 local via ffmpeg + sobe HTTP server efêmero -------------
+  console.log("[smoke-a6-vps] 🎞️  gerando MP4 teste via ffmpeg (testsrc)...");
+  const mp4Path = generateTestMp4();
+  const mp4Buffer = await readFile(mp4Path);
+  console.log(`[smoke-a6-vps]    MP4 gerado: ${mp4Path} (${mp4Buffer.length} bytes)`);
+
+  const { baseUrl, close: closeServer } = await startMp4Server(mp4Buffer);
+  console.log(`[smoke-a6-vps] 🌐 HTTP server efêmero: ${baseUrl}`);
+
+  const MOCK_MP4_URLS = {
+    hook: `${baseUrl}/hook.mp4`,
+    body: `${baseUrl}/body.mp4`,
+    cta: `${baseUrl}/cta.mp4`,
+  };
 
   // --- 1. Hand-craft do RenderManifest --------------------------------------
   // Durações: hook=3s + body=5s + cta=3s = 11s total (330 frames @ 30fps).
@@ -70,7 +133,7 @@ async function main() {
     clips: [
       {
         block: "hook",
-        video_url: PUBLIC_MP4_SAMPLES.hook,
+        video_url: MOCK_MP4_URLS.hook,
         start_frame: 0,
         duration_frames: 90, // 3s
         transition_in: "cut",
@@ -78,7 +141,7 @@ async function main() {
       },
       {
         block: "body",
-        video_url: PUBLIC_MP4_SAMPLES.body,
+        video_url: MOCK_MP4_URLS.body,
         start_frame: 90,
         duration_frames: 150, // 5s
         transition_in: "fade",
@@ -90,7 +153,7 @@ async function main() {
       },
       {
         block: "cta",
-        video_url: PUBLIC_MP4_SAMPLES.cta,
+        video_url: MOCK_MP4_URLS.cta,
         start_frame: 240,
         duration_frames: 90, // 3s
         transition_in: "slide_up",
@@ -151,8 +214,11 @@ async function main() {
   } catch (err) {
     console.error("\n[smoke-a6-vps] ❌ FALHA NA INFRA:");
     console.error((err as Error).message);
+    await closeServer().catch(() => {});
     process.exit(2);
   }
+
+  await closeServer();
 }
 
 main().catch((err) => {
