@@ -15,8 +15,19 @@ import {
   Sequence,
   OffthreadVideo,
   interpolate,
+  staticFile,
   useCurrentFrame,
 } from "remotion";
+
+/**
+ * Resolve `video_url` do manifest para um src que o Remotion consegue baixar.
+ * URLs absolutas (http/https/file) passam direto; paths relativos são
+ * resolvidos via `staticFile()` contra o diretório `public/` do bundle.
+ */
+const resolveVideoSrc = (videoUrl: string): string => {
+  if (/^(https?:|file:)/i.test(videoUrl)) return videoUrl;
+  return staticFile(videoUrl);
+};
 import { PixelHashWrapper } from "./PixelHashWrapper";
 
 /** Número de frames para transições (fade/slide_up). */
@@ -104,7 +115,7 @@ const ClipWithTransition: React.FC<{
         transform: `translateY(${translateY}%)`,
       }}
     >
-      <OffthreadVideo src={clip.video_url} style={{ width: "100%", height: "100%" }} />
+      <OffthreadVideo src={resolveVideoSrc(clip.video_url)} style={{ width: "100%", height: "100%" }} />
       {clip.text_overlay && (
         <div
           style={{
