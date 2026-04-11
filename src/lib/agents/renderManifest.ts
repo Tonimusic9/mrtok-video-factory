@@ -42,7 +42,7 @@ export const clipEntrySchema = z.object({
       position: z.enum(["top", "center", "bottom"]),
       style: z.enum(["ugc_caption", "cta_bold"]),
     })
-    .optional(),
+    .nullish(),
 });
 export type ClipEntry = z.infer<typeof clipEntrySchema>;
 
