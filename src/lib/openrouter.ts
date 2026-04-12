@@ -14,6 +14,7 @@
  *   a5 · Produtor Visual/Voz     → Minimax M2.7
  *   a6 · Montador CLI            → GLM 5.1
  *   a7 · Deployer                → GLM 5.1
+ *   a8 · Analytics / Estrategista → DeepSeek V3.1
  *
  * ARQUITETURA 100% OPEN SOURCE / NON-OPENAI:
  * Nenhum músculo roteia para OpenAI. Todos os agentes usam modelos
@@ -25,7 +26,7 @@ import { getEnv } from "@/lib/env";
 import type { TaskAgent } from "@/types/database";
 
 /** Slugs OpenRouter — validados contra GET /api/v1/models em 2026-04-08. */
-export const MODEL_MAP: Record<Exclude<TaskAgent, "qc" | "a8" | "ceo">, string> = {
+export const MODEL_MAP: Record<Exclude<TaskAgent, "qc" | "ceo">, string> = {
   a0: "minimax/minimax-m2.7",
   a1: "google/gemini-3-flash-preview",
   a2: "minimax/minimax-m2.7",
@@ -34,6 +35,9 @@ export const MODEL_MAP: Record<Exclude<TaskAgent, "qc" | "a8" | "ceo">, string> 
   a5: "minimax/minimax-m2.7",
   a6: "z-ai/glm-5.1",
   a7: "z-ai/glm-5.1",
+  // a8 — Analytics / Estrategista de ROI (migrado de Gemma 4 local em 2026-04-11
+  // para DeepSeek V3.1 via OpenRouter; libera RAM da VPS p/ renders Remotion do a6).
+  a8: "deepseek/deepseek-chat-v3.1",
 };
 
 export interface OpenRouterMessage {

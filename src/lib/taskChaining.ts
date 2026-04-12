@@ -10,7 +10,8 @@
  *  - Centralizado no runner (`agent-runner.processOne`), não nos workers.
  *    Mantém os workers puros/stateless e dá um ponto único de extensão.
  *  - Registry é um map `(fromAgent) => handler`. Adicionar chaining
- *    futuro (ex.: a7 → a8 analytics) é trivial: só adicionar entrada.
+ *    futuro (ex.: a7 → a8 analytics) exige apenas nova entrada aqui —
+ *    ver TODO(v1.1) logo abaixo do `CHAIN_REGISTRY`.
  *  - Handlers NÃO lançam para derrubar o tick — devolvem
  *    `{ injected: false, reason }`. O runner loga e segue; o vídeo já
  *    está rendered, delivery manual permanece viável.
@@ -124,6 +125,11 @@ const handleA6ToA7: ChainHandler = async (row, result, supabase) => {
 
 const CHAIN_REGISTRY: Partial<Record<TaskAgent, ChainHandler>> = {
   a6: handleA6ToA7,
+  // TODO(v1.1): a7 → a8 (Analytics). Pré-requisito: ingestão real de KPIs
+  // TikTok (views/likes/comments/shares) via `/analytics` ou Firecrawl. Sem
+  // dados colhidos o a8 só produziria relatórios vazios — ativar o chain
+  // aqui só quando a tabela `hook_performance` estiver sendo alimentada em
+  // produção. Ver migration 0002 e knowledge/agents/agente-a8-analytics.md.
 };
 
 /**
