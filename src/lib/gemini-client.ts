@@ -23,7 +23,7 @@ async function generateViaOpenRouter(prompt: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.0-flash-001",
+      model: "google/gemini-2.5-flash",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
     }),
@@ -44,7 +44,7 @@ async function generateViaOpenRouter(prompt: string): Promise<string> {
 export async function generateWithGemini(prompt: string): Promise<string> {
   try {
     const ai = getGemini();
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (err: unknown) {
