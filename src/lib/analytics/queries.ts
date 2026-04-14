@@ -316,3 +316,56 @@ export async function aggregateVideoPerformance(
 
   return sorted.slice(0, limit).map((row, idx) => ({ ...row, rank: idx + 1 }));
 }
+
+// ---------------------------------------------------------------------------
+// Query 3 — Leads Summary (Topo do Funil — Worker a0)
+// ---------------------------------------------------------------------------
+
+export interface LeadsSummary {
+  totalLeads: number;
+  pending: number;
+  queued: number;
+  processed: number;
+  avgViralScore: number;
+}
+
+export async function getLeadsSummary(): Promise<LeadsSummary> {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await (supabase as any)
+    .from("product_leads")
+    .select("status, viral_score, engagement_score");
+
+  if (error) {
+    console.error("[analytics.getLeadsSummary] supabase error:", error);
+    return { totalLeads: 0, pending: 0, queued: 0, processed: 0, avgViralScore: 0 };
+  }
+
+  const rows = (data ?? []) as Array<{
+    status: string;
+    viral_score: number | null;
+    engagement_score: number | null;
+  }>;
+  if (rows.length === 0) {
+    return { totalLeads: 0, pending: 0, queued: 0, processed: 0, avgViralScore: 0 };
+  }
+
+  let pending = 0;
+  let queued = 0;
+  let processed = 0;
+  let totalScore = 0;
+
+  for (const r of rows) {
+    if (r.status === "pending") pending++;
+    else if (r.status === "processed") processed++;
+    totalScore += r.viral_score ?? r.engagement_score ?? 0;
+  }
+
+  return {
+    totalLeads: rows.length,
+    pending,
+    queued,
+    processed,
+    avgViralScore: Math.round(totalScore / rows.length),
+  };
+}

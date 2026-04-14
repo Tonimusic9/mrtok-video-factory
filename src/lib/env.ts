@@ -44,6 +44,10 @@ const envSchema = z.object({
   // FAL.ai (gateway de vídeo — Tarefa 10, Worker a6)
   FAL_KEY: z.string().min(1, "FAL_KEY ausente (gateway FAL.ai para geração de vídeo)"),
 
+  // Worker a0 (Curador) — Firecrawl + Gemini
+  FIRECRAWL_API_KEY: z.string().min(1, "FIRECRAWL_API_KEY ausente (bypass JS no a0)"),
+  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY ausente (Workers a0/a1 + QC Fase 2)"),
+
   // Segurança
   ALLOWED_IPS: z.string().min(1, "ALLOWED_IPS deve conter ao menos o range Tailscale"),
   READ_ONLY_MODE: z
