@@ -193,10 +193,10 @@ async function processLead(
 
   const result = creativeDirectorResultSchema.parse(parsed);
 
-  // 4. Salvar creative_direction no metadata do lead.
-  //    Status permanece "processed" até a migration 0004 ser aplicada
-  //    (adiciona "directed" ao check constraint). Após aplicar, trocar
-  //    para: status: "directed".
+  // 4. Salvar creative_direction no metadata do lead e promover status para
+  //    'directed' (migration 0004 já aplicada em 2026-04-14). Este status é o
+  //    gatilho consumido pelo Worker a3 (Nano Banana 2) — via chaining a2→a3
+  //    ou backfill manual por status.
   const updatedMetadata = {
     ...meta,
     creative_direction: result,
@@ -206,6 +206,7 @@ async function processLead(
     .from("product_leads")
     .update({
       metadata: updatedMetadata,
+      status: "directed",
     })
     .eq("id", leadId);
 

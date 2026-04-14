@@ -31,6 +31,7 @@ import {
 } from "@/lib/agents/renderManifest";
 import { extractorTaskPayloadSchema } from "@/workers/worker-a1";
 import { creativeDirectorTaskPayloadSchema } from "@/workers/worker-a2";
+import { imageGenTaskPayloadSchema } from "@/workers/worker-a3";
 import { deliveryTaskPayloadSchema } from "@/workers/worker-a7";
 import type { Database, Json, TaskAgent, TaskQueueRow } from "@/types/database";
 
@@ -231,9 +232,56 @@ const handleA1ToA2: ChainHandler = async (row, result, supabase) => {
 // Registry
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Handler: a2 (Roteirista Criativo) → a3 (Nano Banana 2 Image Generator)
+// ---------------------------------------------------------------------------
+
+/** Schema parcial do result do a2 — só o que o chaining precisa */
+const a2ResultSchema = z.object({
+  lead_id: z.string(),
+});
+
+const handleA2ToA3: ChainHandler = async (row, result, supabase) => {
+  const parsed = a2ResultSchema.safeParse(result);
+  if (!parsed.success) {
+    return {
+      injected: false,
+      reason: `a2_result_invalido: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
+    };
+  }
+
+  const a3Payload = { lead_id: parsed.data.lead_id };
+  const check = imageGenTaskPayloadSchema.safeParse(a3Payload);
+  if (!check.success) {
+    return { injected: false, reason: "a3_payload_invalido" };
+  }
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("task_queue")
+    .insert({
+      project_id: row.project_id,
+      agent: "a3",
+      status: "pending",
+      payload: check.data as unknown as Json,
+      parent_task_id: row.id,
+    })
+    .select("id")
+    .single();
+
+  if (insErr || !inserted) {
+    return {
+      injected: false,
+      reason: `insert_a3_failed: ${insErr?.message ?? "no_row_returned"}`,
+    };
+  }
+
+  return { injected: true, nextTaskId: inserted.id, nextAgent: "a3" };
+};
+
 const CHAIN_REGISTRY: Partial<Record<TaskAgent, ChainHandler>> = {
   a0: handleA0ToA1,
   a1: handleA1ToA2,
+  a2: handleA2ToA3,
   a6: handleA6ToA7,
   // TODO(v1.1): a7 → a8 (Analytics). Pré-requisito: ingestão real de KPIs
   // TikTok (views/likes/comments/shares) via `/analytics` ou Firecrawl. Sem

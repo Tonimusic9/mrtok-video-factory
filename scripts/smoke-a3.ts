@@ -1,226 +1,127 @@
 /**
- * Smoke test do Worker a3 — Scriptwriter (Tarefa 6, Passo 4).
+ * Smoke test — Worker a3 (Nano Banana 2 / Image Generation).
  *
- * Valida end-to-end contra Supabase + OpenRouter REAIS:
- *   1. Insere uma row pending em task_queue (agent='a3').
+ * Valida end-to-end contra FAL.ai + Supabase Storage REAIS:
+ *   1. Pega uma task a3 pending (injetada via chaining a2→a3 ou backfill).
  *   2. Executa runWorkerA3Tick({maxTasks:1}).
- *   3. Audita: task virou 'done', result bate com scriptOutputSchema.
- *   4. REGRA DE OURO: confirma que NENHUMA linha foi inserida em
- *      creative_matrix (snapshot global antes/depois + filtro por project_id).
+ *   3. Imprime URLs públicas das imagens geradas e confirma status
+ *      do lead = 'images_generated'.
+ *   4. REGRA DE OURO: confirma creative_matrix inalterada.
  *
- * Uso: `npx tsx scripts/smoke-a3.ts`
- *
- * Exit codes:
- *   0 = ok
- *   1 = env ausente / setup
- *   2 = tick não processou com sucesso
- *   3 = result no DB não bate com scriptOutputSchema
- *   4 = REGRA DE OURO violada (creative_matrix mudou)
- *   5 = falha no cleanup
+ * Uso: npx tsx scripts/smoke-a3.ts
  */
-import { readFileSync } from "node:fs";
+import { config } from "dotenv";
+config({ path: ".env.local" });
 import { createClient } from "@supabase/supabase-js";
 
-function loadEnv(): void {
-  const raw = readFileSync(".env.local", "utf-8");
-  for (const line of raw.split("\n")) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const eq = t.indexOf("=");
-    if (eq === -1) continue;
-    const k = t.slice(0, eq).trim();
-    const v = t.slice(eq + 1).trim();
-    if (!(k in process.env)) process.env[k] = v;
-  }
-}
-
-loadEnv();
-
-const PROJECT_ID = "mrtok-smoke-a3";
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } },
+);
 
 async function main() {
-  const t0 = Date.now();
+  console.log("=== Smoke a3: Nano Banana 2 (FAL.ai) ===\n");
 
-  // --- 1. Setup --------------------------------------------------------------
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    console.error("[smoke-a3] ❌ SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes em .env.local");
+  if (!process.env.FAL_KEY) {
+    console.error("[smoke-a3] ❌ FAL_KEY ausente em .env.local");
     process.exit(1);
   }
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.error("[smoke-a3] ❌ OPENROUTER_API_KEY ausente em .env.local");
+
+  // 1. Snapshot creative_matrix ANTES (Regra de Ouro).
+  const { count: matrixBefore } = await supabase
+    .from("creative_matrix")
+    .select("*", { count: "exact", head: true });
+  console.log(`[smoke-a3] 📸 creative_matrix ANTES: ${matrixBefore ?? 0} rows`);
+
+  // 2. Pegar task a3 pending.
+  const { data: tasks, error: taskErr } = await supabase
+    .from("task_queue")
+    .select("id, payload")
+    .eq("agent", "a3")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (taskErr) {
+    console.error("Erro ao buscar tasks:", taskErr.message);
     process.exit(1);
   }
-  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
-    console.warn("[smoke-a3] ⚠️ TELEGRAM_* não configurado — notificação do tick será no-op");
+
+  if (!tasks || tasks.length === 0) {
+    console.log("Nenhuma task a3 pending. Rode backfill-a3 primeiro.");
+    process.exit(0);
   }
 
-  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+  console.log(`1. Task a3 encontrada: ${tasks[0].id}`);
+  console.log(`   Payload: ${JSON.stringify(tasks[0].payload)}\n`);
 
-  // Imports dinâmicos pós-loadEnv para garantir que módulos que leem env
-  // no top-level peguem os valores corretos.
+  const leadId = (tasks[0].payload as { lead_id: string }).lead_id;
+
+  // 3. Rodar o worker.
+  console.log("2. Executando runWorkerA3Tick...\n");
   const { runWorkerA3Tick } = await import("../src/workers/worker-a3");
-  const { scriptOutputSchema } = await import("../src/lib/agents/scriptwriter");
+  const result = await runWorkerA3Tick({ maxTasks: 1 });
 
-  // --- 2. Cleanup prévio idempotente -----------------------------------------
-  const { data: tqDel, error: tqDelErr } = await supabase
-    .from("task_queue")
-    .delete()
-    .eq("project_id", PROJECT_ID)
-    .select("id");
-  if (tqDelErr) {
-    console.error(`[smoke-a3] ❌ cleanup task_queue: ${tqDelErr.message}`);
-    process.exit(5);
-  }
-  const { data: cmDel, error: cmDelErr } = await supabase
-    .from("creative_matrix")
-    .delete()
-    .eq("project_id", PROJECT_ID)
-    .select("id");
-  if (cmDelErr) {
-    console.error(`[smoke-a3] ❌ cleanup creative_matrix: ${cmDelErr.message}`);
-    process.exit(5);
-  }
-  console.log(
-    `[smoke-a3] 🧹 cleanup prévio: task_queue=${tqDel?.length ?? 0} creative_matrix=${cmDel?.length ?? 0}`,
-  );
+  console.log("3. Resultado do tick:");
+  console.log(JSON.stringify(result, null, 2));
 
-  // --- 3. Snapshot ANTES (Regra de Ouro) ------------------------------------
-  const { count: matrixCountBefore, error: cBeforeErr } = await supabase
-    .from("creative_matrix")
-    .select("*", { count: "exact", head: true });
-  if (cBeforeErr || matrixCountBefore === null) {
-    console.error(`[smoke-a3] ❌ snapshot creative_matrix antes: ${cBeforeErr?.message}`);
-    process.exit(1);
-  }
-  console.log(`[smoke-a3] 📸 creative_matrix global ANTES: ${matrixCountBefore} rows`);
-
-  // --- 4. Insert da fixture --------------------------------------------------
-  const { data: inserted, error: insErr } = await supabase
-    .from("task_queue")
-    .insert({
-      project_id: PROJECT_ID,
-      agent: "a3",
-      status: "pending",
-      payload: {
-        theme: "máscara facial de argila verde para pele oleosa",
-        target_persona: "mulher 25-34, rotina apressada, pele mista oleosa",
-        compliance_constraints: [
-          "não mencionar ANVISA",
-          "não prometer eliminação de acne",
-        ],
-      },
-    })
-    .select("id")
-    .single();
-  if (insErr || !inserted) {
-    console.error(`[smoke-a3] ❌ insert fixture: ${insErr?.message}`);
-    process.exit(1);
-  }
-  const insertedId = inserted.id;
-  console.log(`[smoke-a3] 📥 task pending criada: ${insertedId}`);
-
-  // --- 5. Execução -----------------------------------------------------------
-  console.log("[smoke-a3] ▶️  runWorkerA3Tick({maxTasks:1}) ...");
-  const tick = await runWorkerA3Tick({ maxTasks: 1 });
-  console.log(
-    `[smoke-a3] tick: processed=${tick.processed} ok=${tick.succeeded} failed=${tick.failed} skipped=${tick.skipped}`,
-  );
-  console.log(`[smoke-a3] tick.results: ${JSON.stringify(tick.results, null, 2)}`);
-
-  if (tick.succeeded !== 1) {
-    console.error("[smoke-a3] ❌ tick não teve 1 sucesso — abortando antes da auditoria");
+  if (result.succeeded !== 1) {
+    console.error("[smoke-a3] ❌ tick não teve 1 sucesso");
     process.exit(2);
   }
 
-  // --- 6. Auditoria pós-execução --------------------------------------------
-  const { data: row, error: rowErr } = await supabase
-    .from("task_queue")
-    .select("status, result, error")
-    .eq("id", insertedId)
-    .single();
-  if (rowErr || !row) {
-    console.error(`[smoke-a3] ❌ leitura da row pós-tick: ${rowErr?.message}`);
-    process.exit(2);
-  }
-  if (row.status !== "done") {
-    console.error(
-      `[smoke-a3] ❌ status esperado 'done', recebido '${row.status}' (error=${row.error})`,
-    );
-    process.exit(2);
-  }
-
-  const parsed = scriptOutputSchema.safeParse(row.result);
-  if (!parsed.success) {
-    console.error("[smoke-a3] ❌ result no DB não bate com scriptOutputSchema:");
-    for (const issue of parsed.error.issues) {
-      console.error(`   - ${issue.path.join(".")}: ${issue.message}`);
+  // 4. Exibir URLs geradas.
+  const taskResult = result.results[0];
+  if (taskResult.status === "done" && taskResult.result) {
+    const r = taskResult.result as {
+      images_count: number;
+      failures_count: number;
+      generated_images: Array<{
+        scene_index: number;
+        phase: string;
+        public_url: string;
+      }>;
+    };
+    console.log("\n" + "=".repeat(60));
+    console.log(`IMAGENS GERADAS (${r.images_count}, falhas: ${r.failures_count}):`);
+    console.log("=".repeat(60));
+    for (const img of r.generated_images) {
+      console.log(`  cena ${img.scene_index} (${img.phase}): ${img.public_url}`);
     }
-    process.exit(3);
   }
-  const script = parsed.data;
-  console.log("\n[smoke-a3] 📜 roteiro gerado:");
-  console.log(`   HOOK (${script.hook.duration_seconds}s): ${script.hook.voiceover}`);
-  console.log(`     visual: ${script.hook.visual_disruptor}`);
-  console.log(`     imperfeição: ${script.hook.human_imperfection_hint}`);
-  console.log(`   BODY (${script.body.duration_seconds}s): ${script.body.voiceover}`);
-  console.log(`     pontos: ${script.body.key_points.join(" | ")}`);
-  console.log(`   CTA  (${script.cta.duration_seconds}s): ${script.cta.voiceover}`);
-  console.log(`     verbo: ${script.cta.action_verb}\n`);
 
-  // --- 7. Verificação da Regra de Ouro --------------------------------------
-  const { count: matrixCountAfter, error: cAfterErr } = await supabase
+  // 5. Conferir status do lead.
+  const { data: leadAfter } = await supabase
+    .from("product_leads")
+    .select("status")
+    .eq("id", leadId)
+    .single();
+  console.log(`\n4. Status do lead ${leadId}: ${leadAfter?.status}`);
+  if (leadAfter?.status !== "images_generated") {
+    console.error(
+      `[smoke-a3] ❌ status esperado 'images_generated', recebido '${leadAfter?.status}'`,
+    );
+    process.exit(2);
+  }
+
+  // 6. Regra de Ouro.
+  const { count: matrixAfter } = await supabase
     .from("creative_matrix")
     .select("*", { count: "exact", head: true });
-  if (cAfterErr || matrixCountAfter === null) {
-    console.error(`[smoke-a3] ❌ snapshot creative_matrix depois: ${cAfterErr?.message}`);
-    process.exit(1);
-  }
-  console.log(`[smoke-a3] 📸 creative_matrix global DEPOIS: ${matrixCountAfter} rows`);
-
-  if (matrixCountAfter !== matrixCountBefore) {
+  console.log(`[smoke-a3] 📸 creative_matrix DEPOIS: ${matrixAfter ?? 0} rows`);
+  if (matrixAfter !== matrixBefore) {
     console.error(
-      `[smoke-a3] 🚨 REGRA DE OURO VIOLADA: creative_matrix mudou de ${matrixCountBefore} para ${matrixCountAfter}`,
+      `[smoke-a3] 🚨 REGRA DE OURO VIOLADA: creative_matrix ${matrixBefore} → ${matrixAfter}`,
     );
     process.exit(4);
   }
+  console.log("[smoke-a3] ✅ Regra de Ouro intacta");
 
-  const { data: cmLeak, error: cmLeakErr } = await supabase
-    .from("creative_matrix")
-    .select("id")
-    .eq("project_id", PROJECT_ID);
-  if (cmLeakErr) {
-    console.error(`[smoke-a3] ❌ leitura creative_matrix por project_id: ${cmLeakErr.message}`);
-    process.exit(1);
-  }
-  if (cmLeak && cmLeak.length > 0) {
-    console.error(
-      `[smoke-a3] 🚨 REGRA DE OURO VIOLADA: ${cmLeak.length} row(s) em creative_matrix com project_id='${PROJECT_ID}'`,
-    );
-    process.exit(4);
-  }
-  console.log("[smoke-a3] ✅ Regra de Ouro intacta — creative_matrix inalterada");
-
-  // --- 8. Cleanup final ------------------------------------------------------
-  const { error: finalDelErr } = await supabase
-    .from("task_queue")
-    .delete()
-    .eq("id", insertedId);
-  if (finalDelErr) {
-    console.error(`[smoke-a3] ❌ cleanup final task_queue: ${finalDelErr.message}`);
-    process.exit(5);
-  }
-
-  const totalMs = Date.now() - t0;
-  const totalDuration =
-    script.hook.duration_seconds + script.body.duration_seconds + script.cta.duration_seconds;
-  console.log(
-    `\n[smoke-a3] ✅ smoke a3 PASSOU em ${totalMs}ms · roteiro ${totalDuration}s · ${script.body.key_points.length} key_points`,
-  );
+  console.log("\n=== Smoke a3 concluído ===");
 }
 
 main().catch((err) => {
-  console.error("[smoke-a3] ❌ falha inesperada:", err);
+  console.error("Erro fatal:", err);
   process.exit(1);
 });
