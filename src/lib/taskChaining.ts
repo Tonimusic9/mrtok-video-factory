@@ -22,12 +22,14 @@
  *   - `a6` → enfileira task `a7` com o `output_video_url` do MontadorResult
  *     e o `delivery_context` que veio na task do a6.
  */
+import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   deliveryContextSchema,
   montadorResultSchema,
   montadorTaskPayloadSchema,
 } from "@/lib/agents/renderManifest";
+import { extractorTaskPayloadSchema } from "@/workers/worker-a1";
 import { deliveryTaskPayloadSchema } from "@/workers/worker-a7";
 import type { Database, Json, TaskAgent, TaskQueueRow } from "@/types/database";
 
@@ -120,10 +122,70 @@ const handleA6ToA7: ChainHandler = async (row, result, supabase) => {
 };
 
 // ---------------------------------------------------------------------------
+// Handler: a0 (Curador) → a1 (Extrator Multimodal)
+// ---------------------------------------------------------------------------
+
+/** Schema parcial do result do a0 — só o que o chaining precisa */
+const a0ResultSchema = z.object({
+  leads: z.array(
+    z.object({
+      lead_id: z.string(),
+      title: z.string(),
+      viral_score: z.number(),
+    }),
+  ),
+});
+
+const handleA0ToA1: ChainHandler = async (row, result, supabase) => {
+  const parsed = a0ResultSchema.safeParse(result);
+  if (!parsed.success) {
+    return {
+      injected: false,
+      reason: `a0_result_invalido: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
+    };
+  }
+
+  const { leads } = parsed.data;
+  if (leads.length === 0) {
+    return { injected: false, reason: "a0_sem_leads" };
+  }
+
+  let lastTaskId = "";
+  for (const lead of leads) {
+    const a1Payload = { lead_id: lead.lead_id };
+    const check = extractorTaskPayloadSchema.safeParse(a1Payload);
+    if (!check.success) continue;
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("task_queue")
+      .insert({
+        project_id: row.project_id,
+        agent: "a1",
+        status: "pending",
+        payload: check.data as unknown as Json,
+        parent_task_id: row.id,
+      })
+      .select("id")
+      .single();
+
+    if (!insErr && inserted) {
+      lastTaskId = inserted.id;
+    }
+  }
+
+  if (!lastTaskId) {
+    return { injected: false, reason: "nenhuma_task_a1_inserida" };
+  }
+
+  return { injected: true, nextTaskId: lastTaskId, nextAgent: "a1" };
+};
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
 const CHAIN_REGISTRY: Partial<Record<TaskAgent, ChainHandler>> = {
+  a0: handleA0ToA1,
   a6: handleA6ToA7,
   // TODO(v1.1): a7 → a8 (Analytics). Pré-requisito: ingestão real de KPIs
   // TikTok (views/likes/comments/shares) via `/analytics` ou Firecrawl. Sem
