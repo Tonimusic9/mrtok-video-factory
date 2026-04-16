@@ -1,23 +1,27 @@
 /**
- * Cliente FAL.ai — gateway de geração de vídeo (Tarefa 10, Worker a6).
+ * Cliente FAL.ai — gateway de geração de vídeo/imagem.
  *
  * Submete jobs via REST queue e faz poll com backoff exponencial até
- * conclusão ou timeout. Cada request tem timeout individual de 5 minutos.
+ * conclusão ou timeout.
  *
- * Endpoints:
- *   POST https://queue.fal.run/{slug}                         → submit
- *   GET  https://queue.fal.run/{slug}/requests/{id}/status    → poll
- *   GET  https://queue.fal.run/{slug}/requests/{id}           → result
+ * Endpoints (2026):
+ *   POST https://queue.fal.run/{slug}              → submit (com slug)
+ *   GET  https://queue.fal.run/requests/{id}/status → poll status (SEM slug)
+ *   GET  https://queue.fal.run/requests/{id}        → fetch result (SEM slug)
  *
  * REGRA: este módulo NÃO importa nada do domínio MrTok (schemas, agents).
  * É um cliente genérico de fila FAL.ai reutilizável.
  */
 import { getEnv } from "@/lib/env";
+import readline from "readline/promises";
 
-const QUEUE_BASE = "https://queue.fal.run";
+/** Base para submit: POST https://fal.run/queue/{slug} */
+const SUBMIT_BASE = "https://fal.run/queue";
+/** Base para status/result: GET https://fal.run/queue/requests/{id}/... */
+const POLL_BASE = "https://fal.run/queue/requests";
 
-/** Timeout por request individual — 5 minutos. */
-const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+/** Timeout por request individual — 6 minutos. */
+const REQUEST_TIMEOUT_MS = 6 * 60 * 1000;
 
 /** Backoff inicial do poll em ms. */
 const INITIAL_POLL_INTERVAL_MS = 2_000;
@@ -29,18 +33,13 @@ const BACKOFF_FACTOR = 2;
 const MAX_POLL_INTERVAL_MS = 16_000;
 
 export interface FalSubmitArgs {
-  /** Slug FAL.ai do modelo (ex: "fal-ai/kling-video/v2.1/standard"). */
   slug: string;
-  /** Parâmetros específicos do modelo. */
   input: Record<string, unknown>;
 }
 
 export interface FalJobResult {
-  /** ID do request na fila FAL.ai. */
   request_id: string;
-  /** URL do vídeo gerado. */
   video_url: string;
-  /** Duração do processamento em ms. */
   duration_ms: number;
 }
 
@@ -50,7 +49,8 @@ interface FalQueueResponse {
 }
 
 interface FalStatusResponse {
-  status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+  status: string;
+  [key: string]: unknown;
 }
 
 interface FalResultResponse {
@@ -67,16 +67,28 @@ function authHeaders(): Record<string, string> {
   };
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
- * Submete um job na fila FAL.ai e faz poll até conclusão.
- * Timeout de 5 minutos POR REQUEST INDIVIDUAL.
+ * Submete um job de vídeo na fila FAL.ai e faz poll até conclusão.
  */
 export async function submitAndPoll(args: FalSubmitArgs): Promise<FalJobResult> {
+  // Stop-loss: confirmação manual antes de gastar créditos.
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await rl.question(`⚠️  CUIDADO: Chamada paga → ${args.slug} ($0.50+). Digite "PAGAR" para continuar: `);
+  rl.close();
+  if (answer !== "PAGAR") {
+    console.log("Aborted by user.");
+    process.exit(1);
+  }
+
   const t0 = Date.now();
   const headers = authHeaders();
 
-  // 1. Submit
-  const submitUrl = `${QUEUE_BASE}/${args.slug}`;
+  // 1. Submit (COM slug)
+  const submitUrl = `${SUBMIT_BASE}/${args.slug}`;
   const submitRes = await fetch(submitUrl, {
     method: "POST",
     headers,
@@ -96,11 +108,14 @@ export async function submitAndPoll(args: FalSubmitArgs): Promise<FalJobResult> 
     );
   }
 
-  // 2. Poll com backoff exponencial
-  let interval = INITIAL_POLL_INTERVAL_MS;
-  const statusUrl = `${QUEUE_BASE}/${args.slug}/requests/${requestId}/status`;
-  const resultUrl = `${QUEUE_BASE}/${args.slug}/requests/${requestId}`;
+  console.log(`[fal-client] job submetido: ${requestId}`);
 
+  // 2. Poll (SEM slug nas URLs)
+  let interval = INITIAL_POLL_INTERVAL_MS;
+  const statusUrl = `${POLL_BASE}/${requestId}/status`;
+  const resultUrl = `${POLL_BASE}/${requestId}`;
+
+  let pollCount = 0;
   while (true) {
     const elapsed = Date.now() - t0;
     if (elapsed >= REQUEST_TIMEOUT_MS) {
@@ -111,57 +126,57 @@ export async function submitAndPoll(args: FalSubmitArgs): Promise<FalJobResult> 
 
     await sleep(interval);
     interval = Math.min(interval * BACKOFF_FACTOR, MAX_POLL_INTERVAL_MS);
+    pollCount++;
 
+    // Apenas status endpoint (GET direto dá 405 durante processamento)
     const statusRes = await fetch(statusUrl, { headers });
+
+    if (statusRes.status === 405) {
+      console.error(`[CIRCUIT BREAKER] HTTP 405 em ${statusUrl} — URL de Polling Inválida`);
+      process.exit(1);
+    }
+
     if (!statusRes.ok) {
-      // Falha transitória no poll — continuar tentando até timeout.
+      console.warn(`[fal-client] poll #${pollCount} status HTTP ${statusRes.status}`);
       continue;
     }
-    const statusData = (await statusRes.json()) as FalStatusResponse;
 
-    if (statusData.status === "FAILED") {
-      throw new Error(
-        `[fal-client] job ${requestId} falhou no provider`,
-      );
+    const statusData = (await statusRes.json()) as FalStatusResponse;
+    const st = String(statusData.status ?? "").toUpperCase();
+
+    console.log(
+      `[fal-client:debug] poll #${pollCount} (${Math.round(elapsed / 1000)}s) status="${st}"`,
+      JSON.stringify(statusData).slice(0, 300),
+    );
+
+    if (st === "FAILED") {
+      const detail = typeof statusData.error === "string" ? statusData.error : "";
+      throw new Error(`[fal-client] job ${requestId} FAILED: ${detail || "sem detalhe"}`);
     }
 
-    if (statusData.status === "COMPLETED") {
-      // 3. Buscar resultado
-      const resultRes = await fetch(resultUrl, { headers });
-      if (!resultRes.ok) {
-        const errText = await resultRes.text();
-        throw new Error(
-          `[fal-client] result falhou (${resultRes.status}): ${errText}`,
-        );
+    if (st === "COMPLETED" || st === "SUCCESS" || st === "OK") {
+      console.log(`[fal-client] status=${st} — buscando resultado`);
+      const finalRes = await fetch(resultUrl, { headers });
+      if (!finalRes.ok) {
+        throw new Error(`[fal-client] result GET falhou (${finalRes.status})`);
       }
-      const resultData = (await resultRes.json()) as FalResultResponse;
-
-      // Diferentes modelos retornam a URL em campos diferentes.
+      const resultData = (await finalRes.json()) as FalResultResponse;
       const videoUrl =
         resultData.video?.url ??
         resultData.output?.video ??
         extractVideoUrl(resultData);
-
       if (!videoUrl) {
         throw new Error(
           `[fal-client] resultado sem video_url: ${JSON.stringify(resultData).slice(0, 500)}`,
         );
       }
-
-      return {
-        request_id: requestId,
-        video_url: videoUrl,
-        duration_ms: Date.now() - t0,
-      };
+      return { request_id: requestId, video_url: videoUrl, duration_ms: Date.now() - t0 };
     }
-    // IN_QUEUE ou IN_PROGRESS → continua o poll.
+
+    // IN_QUEUE, IN_PROGRESS → continua
   }
 }
 
-/**
- * Fallback: procura URL de vídeo em qualquer campo do resultado.
- * Alguns modelos FAL.ai usam estruturas de resposta não-padrão.
- */
 function extractVideoUrl(data: Record<string, unknown>): string | undefined {
   for (const value of Object.values(data)) {
     if (typeof value === "string" && value.startsWith("https://") && value.includes(".mp4")) {
@@ -173,10 +188,6 @@ function extractVideoUrl(data: Record<string, unknown>): string | undefined {
     }
   }
   return undefined;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
@@ -197,9 +208,7 @@ interface FalImageResultResponse {
 }
 
 /**
- * Submete um job de imagem (ex.: Nano Banana 2) na fila FAL.ai e faz poll
- * até conclusão. Segue o mesmo padrão de `submitAndPoll` (vídeo) mas extrai
- * a primeira URL de imagem do payload — Nano Banana retorna `images: [{url}]`.
+ * Submete um job de imagem na fila FAL.ai e faz poll até conclusão.
  */
 export async function submitAndPollImage(
   args: FalSubmitArgs,
@@ -207,7 +216,7 @@ export async function submitAndPollImage(
   const t0 = Date.now();
   const headers = authHeaders();
 
-  const submitUrl = `${QUEUE_BASE}/${args.slug}`;
+  const submitUrl = `${SUBMIT_BASE}/${args.slug}`;
   const submitRes = await fetch(submitUrl, {
     method: "POST",
     headers,
@@ -228,9 +237,10 @@ export async function submitAndPollImage(
   }
 
   let interval = INITIAL_POLL_INTERVAL_MS;
-  const statusUrl = `${QUEUE_BASE}/${args.slug}/requests/${requestId}/status`;
-  const resultUrl = `${QUEUE_BASE}/${args.slug}/requests/${requestId}`;
+  const statusUrl = `${POLL_BASE}/${requestId}/status`;
+  const resultUrl = `${POLL_BASE}/${requestId}`;
 
+  let pollCount = 0;
   while (true) {
     const elapsed = Date.now() - t0;
     if (elapsed >= REQUEST_TIMEOUT_MS) {
@@ -241,42 +251,41 @@ export async function submitAndPollImage(
 
     await sleep(interval);
     interval = Math.min(interval * BACKOFF_FACTOR, MAX_POLL_INTERVAL_MS);
+    pollCount++;
 
     const statusRes = await fetch(statusUrl, { headers });
+    if (statusRes.status === 405) {
+      console.error(`[CIRCUIT BREAKER] HTTP 405 em ${statusUrl} — URL de Polling Inválida`);
+      process.exit(1);
+    }
     if (!statusRes.ok) continue;
-    const statusData = (await statusRes.json()) as FalStatusResponse;
 
-    if (statusData.status === "FAILED") {
-      throw new Error(`[fal-client:image] job ${requestId} FAILED no provider`);
+    const statusData = (await statusRes.json()) as FalStatusResponse;
+    const st = String(statusData.status ?? "").toUpperCase();
+
+    console.log(`[fal-client:image:debug] poll #${pollCount} (${Math.round(elapsed / 1000)}s) status="${st}"`);
+
+    if (st === "FAILED") {
+      throw new Error(`[fal-client:image] job ${requestId} FAILED`);
     }
 
-    if (statusData.status === "COMPLETED") {
-      const resultRes = await fetch(resultUrl, { headers });
-      if (!resultRes.ok) {
-        const errText = await resultRes.text();
-        throw new Error(
-          `[fal-client:image] result falhou (${resultRes.status}): ${errText}`,
-        );
+    if (st === "COMPLETED" || st === "SUCCESS" || st === "OK") {
+      const finalRes = await fetch(resultUrl, { headers });
+      if (!finalRes.ok) {
+        throw new Error(`[fal-client:image] result falhou (${finalRes.status})`);
       }
-      const resultData = (await resultRes.json()) as FalImageResultResponse;
-
+      const resultData = (await finalRes.json()) as FalImageResultResponse;
       const imageUrl =
         resultData.images?.[0]?.url ??
         resultData.image?.url ??
         resultData.output?.images?.[0]?.url ??
         extractImageUrl(resultData);
-
       if (!imageUrl) {
         throw new Error(
-          `[fal-client:image] resultado sem url de imagem: ${JSON.stringify(resultData).slice(0, 500)}`,
+          `[fal-client:image] resultado sem url: ${JSON.stringify(resultData).slice(0, 500)}`,
         );
       }
-
-      return {
-        request_id: requestId,
-        image_url: imageUrl,
-        duration_ms: Date.now() - t0,
-      };
+      return { request_id: requestId, image_url: imageUrl, duration_ms: Date.now() - t0 };
     }
   }
 }

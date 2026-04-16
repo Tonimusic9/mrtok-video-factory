@@ -1,6 +1,6 @@
 /**
- * Backfill — Injeta tasks a2 para leads que já passaram pelo a1 (status: processed).
- * Uso: npx tsx scripts/backfill-a2.ts
+ * Backfill — Injeta tasks a4 (Seedance 2.0 i2v) para leads com
+ * status='images_generated'. Uso: npx tsx scripts/backfill-a4.ts
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -12,12 +12,12 @@ const supabase = createClient(
 );
 
 async function main() {
-  console.log("=== Backfill a2: Injetando tasks para leads processed ===\n");
+  console.log("=== Backfill a4: tasks para leads images_generated ===\n");
 
   const { data: leads, error: leadsErr } = await supabase
     .from("product_leads")
     .select("id, title, status")
-    .eq("status", "processed");
+    .eq("status", "images_generated");
 
   if (leadsErr) {
     console.error("Erro ao buscar leads:", leadsErr.message);
@@ -25,14 +25,12 @@ async function main() {
   }
 
   if (!leads || leads.length === 0) {
-    console.log("Nenhum lead processed encontrado.");
+    console.log("Nenhum lead images_generated encontrado. Rode o A3 antes.");
     return;
   }
 
-  console.log(`Encontrados ${leads.length} leads processed:\n`);
-  for (const l of leads) {
-    console.log(`  - ${l.id} | ${l.title}`);
-  }
+  console.log(`Encontrados ${leads.length} leads images_generated:\n`);
+  for (const l of leads) console.log(`  - ${l.id} | ${l.title}`);
 
   console.log("\nInserindo tasks na task_queue...\n");
   let inserted = 0;
@@ -41,8 +39,8 @@ async function main() {
     const { data: task, error: taskErr } = await supabase
       .from("task_queue")
       .insert({
-        project_id: "backfill-a2",
-        agent: "a2",
+        project_id: "backfill-a4",
+        agent: "a4",
         status: "pending",
         payload: { lead_id: lead.id },
       })
@@ -57,7 +55,9 @@ async function main() {
     }
   }
 
-  console.log(`\n=== Backfill concluído: ${inserted}/${leads.length} tasks injetadas ===`);
+  console.log(
+    `\n=== Backfill concluído: ${inserted}/${leads.length} tasks injetadas ===`,
+  );
 }
 
 main().catch((err) => {
