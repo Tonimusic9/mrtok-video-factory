@@ -4,9 +4,9 @@
  * Consome leads com status `images_generated` (keyframes PNG + creative_direction
  * gerados pelo A3) e converte cada imagem em um clipe MP4 via FAL.ai.
  *
- * MODO ESTABILIZAÇÃO: Kling 1.5 Pro como provider primário (validado).
+ * MODO ESTABILIZAÇÃO: Kling v3 Pro como provider primário (image-to-video).
  * Seedance 2.0 DESATIVADO temporariamente (slug correto mas timeouts crônicos).
- * Upgrade para Kling 3.1 agendado para próxima sessão.
+ * Migrado de Kling 1.5 Pro → Kling v3 Pro i2v em 2026-04-17.
  *
  * Prompting: motion_prompt derivado do `creative_direction.motion_buckets`
  * (produzido pelo A3) + estética UGC canônica (iPhone 17 Pro Max, luz natural).
@@ -42,17 +42,17 @@ import {
 //   process.env.FAL_SEEDANCE_I2V_SLUG?.trim() ||
 //   "bytedance/seedance-2.0/image-to-video";
 
-/** Provider primário: Kling 1.5 Pro (estável, validado via Context7). */
+/** Provider primário: Kling v3 Pro (image-to-video, validado via Context7). */
 const KLING_SLUG =
   process.env.FAL_KLING_I2V_SLUG?.trim() ||
-  "fal-ai/kling-video/v1.5/pro/image-to-video";
+  "fal-ai/kling-video/v3/pro/image-to-video";
 
 const STORAGE_BUCKET = "mrtok-videos";
 const VIDEO_CONCURRENCY = 2;
 /** ZERO retries — One-Shot ou nada (modo estabilização). */
 const MAX_RETRIES_PER_SCENE = 0;
 
-/** Kling 1.5 Pro: duration é enum string "5" ou "10". */
+/** Kling v3 Pro: duration é enum string — valores "3".."15". Mantemos "5". */
 const KLING_DURATION: "5" | "10" = "5";
 
 // ---------------------------------------------------------------------------
@@ -176,18 +176,18 @@ async function runKling(
 ): Promise<{ request_id: string; video_url: string; duration_ms: number }> {
   const motionPrompt = buildMotionPrompt(scene.motion);
   console.log(
-    `[a4] Kling 1.5 Pro cena ${scene.image.scene_index} prompt: ${motionPrompt.slice(0, 200)}`,
+    `[a4] Kling v3 Pro cena ${scene.image.scene_index} prompt: ${motionPrompt.slice(0, 200)}`,
   );
-  console.log("[CUIDADO] Iniciando chamada paga - Motor: Kling 1.5 Pro");
+  console.log("[CUIDADO] Iniciando chamada paga - Motor: Kling v3 Pro");
 
   try {
     return await submitAndPoll({
       slug: KLING_SLUG,
       input: {
         prompt: motionPrompt,
-        image_url: scene.image.public_url,
+        start_image_url: scene.image.public_url,
         duration: KLING_DURATION,
-        aspect_ratio: "9:16",
+        generate_audio: false,
         negative_prompt: "blur, distort, low quality, watermark, text overlay",
         cfg_scale: 0.5,
       },
@@ -206,7 +206,7 @@ async function generateOne(
   leadId: string,
   scene: SceneJob,
 ): Promise<GeneratedVideo> {
-  // Kling 1.5 Pro com retries (provider primário — modo estabilização).
+  // Kling v3 Pro com retries (provider primário — modo estabilização).
   let lastErr: Error | null = null;
   for (let attempt = 1; attempt <= MAX_RETRIES_PER_SCENE + 1; attempt++) {
     try {
@@ -223,7 +223,7 @@ async function generateOne(
         phase: scene.image.phase,
         storage_path: upl.storage_path,
         public_url: upl.public_url,
-        provider: "kling_1_5_pro",
+        provider: "kling_3_1",
         fal_request_id: job.request_id,
         duration_seconds: Number(KLING_DURATION),
         duration_ms: job.duration_ms,
@@ -231,7 +231,7 @@ async function generateOne(
     } catch (err) {
       lastErr = err instanceof Error ? err : new Error(String(err));
       console.warn(
-        `[a4] kling 1.5 pro tentativa ${attempt}/${MAX_RETRIES_PER_SCENE + 1} cena ${scene.image.scene_index} falhou: ${lastErr.message}`,
+        `[a4] kling v3 pro tentativa ${attempt}/${MAX_RETRIES_PER_SCENE + 1} cena ${scene.image.scene_index} falhou: ${lastErr.message}`,
       );
       if (attempt <= MAX_RETRIES_PER_SCENE) {
         await new Promise((r) => setTimeout(r, 3_000 * attempt));
@@ -240,7 +240,7 @@ async function generateOne(
   }
 
   throw new Error(
-    `kling 1.5 pro esgotou ${MAX_RETRIES_PER_SCENE + 1} tentativas cena ${scene.image.scene_index}: ${lastErr?.message ?? "?"}`,
+    `kling v3 pro esgotou ${MAX_RETRIES_PER_SCENE + 1} tentativas cena ${scene.image.scene_index}: ${lastErr?.message ?? "?"}`,
   );
 }
 
@@ -288,13 +288,16 @@ async function runBounded<T, R>(
  * stdin quando `VIDEO_CONCURRENCY > 1`.
  */
 async function confirmBatchPayment(sceneCount: number): Promise<void> {
-  const est = (sceneCount * 0.35).toFixed(2); // Kling 1.5 Pro duration=5s
+  // Estimador TEMPORÁRIO herdado da Kling 1.5 Pro ($0.35 por 5s). Preço
+  // oficial do Kling v3 Pro i2v NÃO confirmado via docs — recalibrar antes
+  // do próximo smoke pago (pendência operacional).
+  const est = (sceneCount * 0.35).toFixed(2);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
   const answer = await rl.question(
-    `⚠️  BATCH PAGO → ${sceneCount} cena(s) Kling 1.5 Pro (≈$${est}). Digite "PAGAR" para continuar: `,
+    `⚠️  BATCH PAGO → ${sceneCount} cena(s) Kling v3 Pro (≈$${est}, preço v3 a confirmar). Digite "PAGAR" para continuar: `,
   );
   rl.close();
   if (answer !== "PAGAR") {

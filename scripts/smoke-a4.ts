@@ -1,5 +1,5 @@
 /**
- * Smoke test — Worker a4 (Seedance 2.0 i2v / fallback Kling 3.1).
+ * Smoke test — Worker a4 (Kling v3 Pro image-to-video).
  *
  * Valida end-to-end contra FAL.ai + Supabase Storage REAIS:
  *   1. Pega uma task a4 pending (injetada via chaining a3→a4 ou backfill).
@@ -20,7 +20,7 @@ const supabase = createClient(
 );
 
 async function main() {
-  console.log("=== Smoke a4: Seedance 2.0 i2v (FAL.ai) ===\n");
+  console.log("=== Smoke a4: Kling v3 Pro i2v (FAL.ai) ===\n");
 
   if (!process.env.FAL_KEY) {
     console.error("[smoke-a4] ❌ FAL_KEY ausente em .env.local");
