@@ -10,7 +10,6 @@
  * É um cliente genérico de fila FAL.ai reutilizável.
  */
 import { fal } from "@fal-ai/client";
-import readline from "readline/promises";
 import { getEnv } from "@/lib/env";
 
 // ---------------------------------------------------------------------------
@@ -55,17 +54,6 @@ function ensureFalConfig(): void {
  * Submete um job de vídeo na fila FAL.ai via SDK e aguarda conclusão.
  */
 export async function submitAndPoll(args: FalSubmitArgs): Promise<FalJobResult> {
-  // Stop-loss: confirmação manual antes de gastar créditos.
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await rl.question(
-    `⚠️  CUIDADO: Chamada paga → ${args.slug} ($0.50+). Digite "PAGAR" para continuar: `,
-  );
-  rl.close();
-  if (answer !== "PAGAR") {
-    console.log("Aborted by user.");
-    process.exit(1);
-  }
-
   ensureFalConfig();
   console.log(`[fal-client] Submetendo via SDK Oficial FAL.ai: ${args.slug}`);
   const t0 = Date.now();

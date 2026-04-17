@@ -18,6 +18,7 @@
  * REGRA DE OURO (Dados): nunca escreve em `creative_matrix` — apenas em
  * `product_leads.metadata` e `task_queue.result` (via runner).
  */
+import readline from "readline/promises";
 import { z } from "zod";
 import {
   runAgentTick,
@@ -278,6 +279,31 @@ async function runBounded<T, R>(
 }
 
 // ---------------------------------------------------------------------------
+// Trava financeira — confirmação humana única por batch
+// ---------------------------------------------------------------------------
+
+/**
+ * Pede ao operador que digite "PAGAR" antes de disparar as chamadas pagas à
+ * FAL. Executada uma única vez por batch (não por cena), evitando race de
+ * stdin quando `VIDEO_CONCURRENCY > 1`.
+ */
+async function confirmBatchPayment(sceneCount: number): Promise<void> {
+  const est = (sceneCount * 0.35).toFixed(2); // Kling 1.5 Pro duration=5s
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  const answer = await rl.question(
+    `⚠️  BATCH PAGO → ${sceneCount} cena(s) Kling 1.5 Pro (≈$${est}). Digite "PAGAR" para continuar: `,
+  );
+  rl.close();
+  if (answer !== "PAGAR") {
+    console.log("[a4] Abortado pelo usuário.");
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Processamento principal
 // ---------------------------------------------------------------------------
 
@@ -330,10 +356,15 @@ async function processLead(leadId: string): Promise<{
     );
   }
 
-  // Stop-loss: limitar a 1 cena no modo estabilização.
-  const MAX_SCENES = 1;
+  // Stop-loss parametrizável via env. Default=1 (safe). Usar A4_MAX_SCENES=3
+  // (ou outro valor) para escalar sem editar código.
+  const MAX_SCENES = Number(process.env.A4_MAX_SCENES ?? 1);
   const jobs = allJobs.slice(0, MAX_SCENES);
   console.log(`[a4] Processando ${jobs.length}/${allJobs.length} cenas (MAX_SCENES=${MAX_SCENES})`);
+
+  // Confirmação humana ÚNICA para o batch inteiro (evita race de stdin quando
+  // VIDEO_CONCURRENCY > 1). Substitui a trava per-cena do fal-client.
+  await confirmBatchPayment(jobs.length);
 
   const outcomes = await runBounded(jobs, VIDEO_CONCURRENCY, (job) =>
     generateOne(leadId, job),
