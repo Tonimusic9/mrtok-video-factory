@@ -288,16 +288,18 @@ async function runBounded<T, R>(
  * stdin quando `VIDEO_CONCURRENCY > 1`.
  */
 async function confirmBatchPayment(sceneCount: number): Promise<void> {
-  // Estimador TEMPORÁRIO herdado da Kling 1.5 Pro ($0.35 por 5s). Preço
-  // oficial do Kling v3 Pro i2v NÃO confirmado via docs — recalibrar antes
-  // do próximo smoke pago (pendência operacional).
-  const est = (sceneCount * 0.35).toFixed(2);
+  // Preço oficial Kling v3 Pro i2v sem áudio: $0.112/segundo
+  // (generate_audio=false). Fonte: fal.ai/models/fal-ai/kling-video/v3/pro/image-to-video.
+  const PRICE_PER_SECOND_NO_AUDIO = 0.112;
+  const est = (
+    sceneCount * Number(KLING_DURATION) * PRICE_PER_SECOND_NO_AUDIO
+  ).toFixed(2);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
   const answer = await rl.question(
-    `⚠️  BATCH PAGO → ${sceneCount} cena(s) Kling v3 Pro (≈$${est}, preço v3 a confirmar). Digite "PAGAR" para continuar: `,
+    `⚠️  BATCH PAGO → ${sceneCount} cena(s) Kling v3 Pro (≈$${est}). Digite "PAGAR" para continuar: `,
   );
   rl.close();
   if (answer !== "PAGAR") {
