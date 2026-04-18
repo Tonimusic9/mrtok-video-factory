@@ -195,7 +195,7 @@ REGRAS OBRIGATÓRIAS:
 1. Visual prompts em INGLÊS (performance dos geradores de imagem).
 2. Voiceover em PORTUGUÊS BR coloquial. NUNCA exagerar produto ou fazer claims médicos.
 3. Cada scene_index mapeia 1:1 com os steps da structural_matrix.
-4. Motion buckets devem respeitar: Seedance 2.0 max 15s, Kling 3.1 max 10s, Veo 3.1 Fast max 8s.
+4. Motion buckets devem respeitar: Seedance 2.0 max 15s, Kling 3.0 Pro max 10s, Veo 3.1 Fast max 8s.
 5. Hook (cena 1): SEMPRE "seedance_2_0" com intensity "high" e duration max 3s.
 6. Resolução canônica: 720x1280 (720p vertical). PROIBIDO 1080p ou 4K.
 7. TODA cena deve ter human_imperfection_hint no voiceover — fator anti-shadowban.

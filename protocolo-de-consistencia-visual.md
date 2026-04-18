@@ -19,6 +19,6 @@ Este documento define as regras de "DNA" para evitar o desperdício de créditos
 ## 4. Parâmetros Canônicos do Ecossistema
 - **Resolução:** 720x1280 (Vertical 9:16 - 720p).
 - **Dispositivo de Referência UGC:** iPhone 17 Pro Max (usado em prompts de estética e metadados de exportação).
-- **Motor Padrão:** Seedance 2.0 (15s max). Alternativas: Kling 3.1 (10s max), Veo 3.1 Fast (8s max).
+- **Motor Padrão:** Seedance 2.0 (15s max). Alternativas: Kling 3.0 Pro (10s max), Veo 3.1 Fast (8s max).
 - **Unique Pixel Hash:** Escala [1.005..1.015] + Rotação [-0.15°..0.15°].
 - **Bitrate de Exportação:** 6-10 Mbps (sweet spot TikTok).

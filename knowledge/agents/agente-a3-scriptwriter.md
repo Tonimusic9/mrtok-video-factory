@@ -34,7 +34,7 @@ O ecossistema utiliza diferentes motores de vídeo. O motor padrão é o **Seeda
 Para que as APIs não falhem e o áudio não dessincronize, VOCÊ DEVE travar a duração máxima de cada corte (`segment_index`) calculando o tamanho do seu texto:
 
 - **Seedance 2.0 (Padrão):** MAX **15.0 segundos** por cena. Ideal para atuação humana e sincronia labial.
-- **Kling 3.1:** MAX **10.0 segundos** por cena. Ideal para física ultrarrealista.
+- **Kling 3.0 Pro:** MAX **10.0 segundos** por cena. Ideal para física ultrarrealista.
 - **Veo 3.1 Fast:** MAX **8.0 segundos** por cena. Ideal para planos cinematográficos.
 
 **Regra Matemática de Fragmentação (Obrigatória):**

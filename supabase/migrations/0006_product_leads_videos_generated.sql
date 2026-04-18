@@ -1,7 +1,7 @@
 -- ============================================================================
 -- MrTok — Migration 0006 (Worker a4 — Seedance 2.0 Image-to-Video)
 -- Adiciona status 'videos_generated' para leads cujos keyframes já foram
--- animados em MP4 via Seedance 2.0 (fallback Kling 3.1) e uploadados para
+-- animados em MP4 via Seedance 2.0 (fallback Kling 3.0 Pro) e uploadados para
 -- Storage. Cria o bucket público `mrtok-videos` consumido pelo Remotion no a6.
 -- ============================================================================
 
