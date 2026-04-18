@@ -115,7 +115,7 @@ const ClipWithTransition: React.FC<{
         transform: `translateY(${translateY}%)`,
       }}
     >
-      <OffthreadVideo src={resolveVideoSrc(clip.video_url)} style={{ width: "100%", height: "100%" }} />
+      <OffthreadVideo src={resolveVideoSrc(clip.video_url)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       {clip.text_overlay && (
         <div
           style={{
