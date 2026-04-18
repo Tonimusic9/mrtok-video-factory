@@ -9,7 +9,7 @@
  * `images_generated`.
  *
  * Engine (direção): Gemini 2.5 Flash — reaproveita `generateWithGemini`.
- * Engine (imagem): Nano Banana 2 — `fal-ai/nano-banana` (override via env).
+ * Engine (imagem): Nano Banana Pro — `fal-ai/nano-banana-pro` (override via env).
  *
  * REGRA DE OURO (ROI): validamos `structural_matrix` antes de gastar Gemini,
  * e validamos `creative_direction` antes de gastar FAL. Zero chamada paga em
