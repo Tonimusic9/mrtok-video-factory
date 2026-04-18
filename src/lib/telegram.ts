@@ -137,6 +137,11 @@ export async function sendTelegramDocument(args: {
   if (args.caption) {
     form.append("caption", args.caption);
   }
+  // Desabilita classificação automática server-side do Bot API — sem isso,
+  // MP4 com codec de vídeo válido é reclassificado como `result.video`
+  // (recompressão) e destrói o Unique Pixel Hash do Remotion.
+  // Ref: https://core.telegram.org/bots/api#senddocument
+  form.append("disable_content_type_detection", "true");
   form.append(
     "document",
     new Blob([new Uint8Array(fileBuffer)], { type: mimeType }),

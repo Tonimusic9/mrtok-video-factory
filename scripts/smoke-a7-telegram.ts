@@ -136,6 +136,9 @@ async function main(): Promise<void> {
     "caption",
     `🧪 smoke-a7-telegram: ${fileName}\nMétodo: sendDocument (zero recompressão)`,
   );
+  // Espelha src/lib/telegram.ts: sem esta flag, MP4 real é reclassificado
+  // como result.video pelo Bot API e destrói o Unique Pixel Hash.
+  form.append("disable_content_type_detection", "true");
   form.append(
     "document",
     new Blob([new Uint8Array(fileBuffer)], { type: mimeType }),
