@@ -34,7 +34,7 @@ import type { Json } from "@/types/database";
 // ---------------------------------------------------------------------------
 
 const NANO_BANANA_SLUG =
-  process.env.FAL_NANO_BANANA_SLUG?.trim() || "fal-ai/nano-banana";
+  process.env.FAL_NANO_BANANA_SLUG?.trim() || "fal-ai/nano-banana-pro";
 
 const STORAGE_BUCKET = "mrtok-images";
 const IMAGE_CONCURRENCY = 2;
@@ -237,8 +237,8 @@ async function generateAndUploadOne(
         slug: NANO_BANANA_SLUG,
         input: {
           prompt: visualPrompt.nano_banana_prompt,
-          negative_prompt: visualPrompt.negative_prompt,
-          image_size: { width: 720, height: 1280 },
+          aspect_ratio: "9:16",
+          resolution: "1K",
           num_images: 1,
         },
       });
