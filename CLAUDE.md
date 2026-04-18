@@ -1,6 +1,6 @@
 CLAUDE.md — MrTok Framework
 1. Project Description
-MrTok é uma fábrica autônoma de conteúdo UGC para TikTok Shop BR, orquestrada via OpenClaw. O sistema automatiza o ciclo completo: da mineração de produtos à entrega final no Google Drive para postagem manual.
+MrTok é uma fábrica autônoma de conteúdo UGC para TikTok Shop BR, orquestrada via OpenClaw. O sistema automatiza o ciclo completo: da mineração de produtos à entrega final via Telegram `sendDocument` direto ao celular do administrador para postagem manual.
 
 Target Audience: Anunciantes e agências que buscam escala com criativos nativos (9:16, Slideshow, Reels).
 
@@ -30,7 +30,7 @@ Worker (a0/a1): Gemini 3.0 Flash - Curadoria multimodal e extração de engenhar
 
 Workers (a3/a4): Qwen3 Max - Redação de roteiros (Doutrina Harry Dry) e direção de arte via prompt.
 
-Worker (a5 - Produtor Visual): Motores Nativos (Seedance 2.0 como padrão, Kling 3.1 e Veo 3.1 Fast como alternativas) via FAL.ai - Exclusivo para renderização de mídia.
+Worker (a5 - Produtor Visual): Motores Nativos via FAL.ai. Provider primário homologado: **Kling v3 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, 5s canônico por cena, preço $0.112/s sem áudio). Seedance 2.0 DESATIVADO (timeouts crônicos); Veo 3.1 Fast permanece como alternativa arquitetural não ativa.
 
 Worker (a6 - Montador Remotion): Z-AI GLM 5.1 - Gera o manifesto de montagem (JSON) e executa o framework Remotion.
 
@@ -42,7 +42,7 @@ Padrão de Execução: Uso do runner runAgentTick com Claim Atômico via Supabas
 
 Segurança de Dados: Validação obrigatória de todo payload via Zod e tipagem estrita em TypeScript.
 
-Integração: Consumo de mídia via FAL.ai (Seedance 2.0, Kling 3.1, Veo 3.1, Nano Banana 2) e notificações assíncronas via Telegram.
+Integração: Consumo de mídia via FAL.ai (**Kling v3 Pro i2v** e **Nano Banana Pro** homologados; Seedance 2.0 e Veo 3.1 Fast como alternativas arquiteturais) e entrega/notificações assíncronas via Telegram.
 
 4. Rules & Constraints
 
@@ -56,7 +56,7 @@ Resolução Canônica: Todo o ecossistema opera em **720x1280 (Vertical 9:16 - 7
 
 Dispositivo de Referência UGC: **iPhone 17 Pro Max**. Usar em prompts de estética (a4) e metadados de exportação (a6).
 
-Motor de Vídeo Padrão: **Seedance 2.0** (15s max por cena). Alternativas disponíveis: Kling 3.1 (10s max) e Veo 3.1 Fast (8s max). Troca autorizada pelo administrador conforme necessidade criativa.
+Motor de Vídeo Homologado: **Kling v3 Pro image-to-video** (5s canônico por cena, enforced via `KLING_DURATION` em `worker-a4.ts`). Slug FAL: `fal-ai/kling-video/v3/pro/image-to-video`. Label interno legado no payload: `kling_3_1`. Alternativas arquiteturais não ativas: Seedance 2.0 (15s max) e Veo 3.1 Fast (8s max) — reativação exige autorização explícita do administrador.
 
 Regra de Ouro (Dados): Workers possuem ZERO permissão de escrita direta na creative_matrix. Apenas o CEO e o Worker a8 consolidam dados no Supabase.
 
@@ -77,7 +77,7 @@ O ecossistema depende das seguintes chaves no `.env.local` (validadas via `env.t
 - `ANTHROPIC_API_KEY` (Para o CEO/Gatekeeper Opus 4.6)
 - `GEMINI_API_KEY` (Para o Worker a0, a1 e delegação de QC Fase 2 - Gemini 3.0 Flash)
 - `OPENROUTER_API_KEY` (Para roteamento do Qwen3 Max e modelos locais)
-- `FAL_KEY` (Para chamadas de vídeo/imagem: Seedance 2.0, Kling 3.1, Veo 3.1, Nano Banana 2)
+- `FAL_KEY` (Para chamadas de vídeo/imagem homologadas: **Kling v3 Pro i2v** e **Nano Banana Pro**; alternativas arquiteturais Seedance 2.0 e Veo 3.1 Fast)
 - `FIRECRAWL_API_KEY` (Para o Worker a0 realizar o bypass de JS no scraping)
 - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (Para banco de dados e gestão multicontas)
 - `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` (Para o CEO enviar pings de rascunhos pendentes)

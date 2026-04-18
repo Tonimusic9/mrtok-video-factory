@@ -33,19 +33,20 @@ A arquitetura resolve isso com:
 * ⏳ **Worker a0 (Curador de Winners):** Gemini 3.0 Flash. Alimenta o pipeline upstream. Usa visão e velocidade hiper-rápida para rastrear sinais de PMF via Firecrawl API (`/scrape`) e Skills SCTM.
 * ⏳ **Worker a1 (Extrator Multimodal):** Gemini 3.0 Flash. Realiza a ingestão de vídeo/áudio de referências virais para mapear *beats* emocionais, ritmo de cortes e fazer a engenharia reversa da retenção.
 * ✅ **Worker a3 (Scriptwriter):** Qwen3 Max. (*Smoke pass: ~12s*). Redige roteiros PT-BR baseados na **Doutrina Harry Dry** (Concreto, Único, Falsificável). Aplica a Regra dos 83%, os 3 Diagnósticos (que incorporam AIDA/PAS) e divide as cenas matematicamente para não estourar as APIs de vídeo.
-* ✅ **Worker a4 (Diretor de Arte):** Qwen3 Max orquestrando **Nano Banana 2**. Cria o Storyboard UGC (9:16) e extrai os *Start Frames* e *End Frames* para cada clipe, preparando o terreno visual. Referência estética: `shot on iPhone 17 Pro Max`.
-* ✅ **Worker a5 (Produtor Visual/Voz):** Aciona os motores de vídeo via FAL.ai baseando-se nos frames do a4. **Motor Padrão: Seedance 2.0** (troca autorizada pelo administrador). **Limites Rígidos de Tempo (Single-Shot):**
-  - **Seedance 2.0 (Padrão):** Máx 15s por cena (Atuação humana e sincronia labial).
-  - **Kling 3.1:** Máx 10s por cena (Física ultrarrealista).
-  - **Veo 3.1 Fast:** Máx 8s por cena (Planos cinematográficos).
+* ✅ **Worker a4 (Diretor de Arte):** Qwen3 Max orquestrando **Nano Banana Pro** (`fal-ai/nano-banana-pro`, `aspect_ratio:"9:16"`, `resolution:"1K"`). Cria o Storyboard UGC (9:16) e extrai os *Start Frames* e *End Frames* para cada clipe, preparando o terreno visual. Referência estética: `shot on iPhone 17 Pro Max`.
+* ✅ **Worker a5 (Produtor Visual/Voz):** Aciona os motores de vídeo via FAL.ai baseando-se nos frames do a4. **Motor Homologado: Kling v3 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, enforced em `worker-a4.ts`). **Configuração canônica atual:**
+  - **Kling v3 Pro i2v (Homologado):** 5s canônico por cena, preço $0.112/s sem áudio. Único provider ativo após estabilização em 2026-04-17.
+  - **Seedance 2.0 (DESATIVADO):** Timeouts crônicos na fila FAL — slug preservado em `FAL_SLUG_BY_PROVIDER` como alternativa arquitetural, 15s max quando reativado.
+  - **Veo 3.1 Fast (alternativa):** 8s max por cena; não ativa no pipeline atual.
   - **Resolução Canônica:** 720x1280 (720p Vertical 9:16).
+  - **Label interno legado:** `kling_3_1` no enum do `motion_bucket.provider` (`worker-a3.ts:68`, `worker-a4.ts:83,226`) — dívida documental, não bloqueia pipeline.
 * ✅ **Worker a6 (Montador CLI / Remotion):** Z-AI GLM 5.1. Orquestra o framework Remotion. Gera a timeline final unindo N clipes (número dinâmico conforme o storyboard do a3), sincroniza as legendas dinâmicas com o áudio, insere a Redline (barra de progresso) e aplica o Unique Pixel Hash (escala [1.005..1.015] + rotação [-0.15°..0.15°]). Exporta em 720x1280, 6-10 Mbps, com metadados de iPhone 17 Pro Max.
 * ✅ **Worker a7 (Delivery / Entrega):** Agente de Logística de Mensageria. Transporta o vídeo finalizado da VPS Hostinger direto ao celular do administrador via **Telegram `sendDocument`** (nunca `sendVideo`, que recomprime e destrói o Unique Pixel Hash). Reutiliza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` já em uso pelo CEO. A postagem no TikTok é feita **manualmente** pelo administrador no celular, garantindo maior alcance orgânico e segurança de conta. Não há integração direta com a API do TikTok para upload. **Decisão de 2026-04-11:** pivot de Google Drive para Telegram — elimina o step manual de "abrir Drive → baixar → postar", entregando o `.mp4` direto na notificação push do celular.
 * ⏳ **Worker a8 (Analytics):** DeepSeek V3.1 via OpenRouter. Minera dados do Supabase (`video_metrics_daily`) e clusteriza winners. Stateless — não reside na VPS, liberando RAM dedicada ao Remotion (a6).
 
 ### 2.1. Matriz de Consistência Visual (O DNA)
 Para impedir *character drift* (mutações de rosto/roupa) e desperdício de fundos nas APIs de vídeo, o Worker a4 aplica um protocolo rígido obrigatório:
-1. **Character/Environment DNA:** O modelo Nano Banana 2 gera folhas de referência (Character Sheets 360º) para travar a identidade da influenciadora e do ambiente.
+1. **Character/Environment DNA:** O modelo Nano Banana Pro gera folhas de referência (Character Sheets 360º) para travar a identidade da influenciadora e do ambiente.
 2. **Start/End Frame Anchoring (Ancoragem):** O pipeline nunca pede para a IA de vídeo gerar do zero. O último frame (End Frame) do Vídeo 1 é matematicamente gerado para servir de referência base (Start Frame) para o Vídeo 2.
 
 ---
@@ -120,6 +121,71 @@ Para que o framework funcione fora do `dry_run` e gere valor real, o ecossistema
 
 ---
 
+
+Para que o framework funcione fora do `dry_run` e gere valor real, o ecossistema consome dependências externas vitais. Essas integrações não substituem a arquitetura central do MrTok; elas servem como motores e serviços especializados dentro da esteira própria do projeto.
+
+### 4.1. Motores de Geração de Mídia
+- **FAL.ai**  
+  Camada de execução para geração de imagens e vídeos pelos workers de produção visual. Atualmente o ecossistema utiliza:
+  - **Nano Banana Pro** (`fal-ai/nano-banana-pro`, `aspect_ratio:"9:16"`, `resolution:"1K"`) para geração de imagens-base e storyboard no fluxo do upstream visual.
+  - **Kling v3 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, 5s canônico, $0.112/s sem áudio) como provider primário único homologado no worker a4. Migrado de Kling 1.5 Pro em 2026-04-17 (ver `worker-a4.ts:7-9`).
+  - **Seedance 2.0 temporariamente desativado** (timeouts crônicos na fila FAL). **Veo 3.1 Fast** permanece como opção arquitetural, mas não ativo. Reativação exige autorização explícita do administrador.
+
+### 4.2. Renderização, Montagem e Pós-Produção
+- **Remotion + infraestrutura própria de render remoto**  
+  O Worker A6 utiliza um pipeline próprio de montagem e renderização baseado em Remotion, com manifesto de render, injeção de Unique Pixel Hash, metadados de exportação e execução remota na VPS.  
+  O diretório `workspace/video-renderer/` permanece como área técnica de trabalho para assets, manifestos e componentes auxiliares do render, mas **não depende mais de OpenMontage como peça estratégica ou fundacional do ecossistema**.
+
+- **`scripts/deploy-render.sh`**  
+  Script operacional crítico para sincronização com a VPS, disparo do render remoto, coleta do arquivo final e validações técnicas como `ffprobe`.
+
+### 4.3. Entrega Final e Mensageria
+- **Telegram Bot API (`sendDocument`)**  
+  Canal oficial de entrega do vídeo final ao administrador.  
+  O método canônico é **`sendDocument`**, nunca `sendVideo`, para preservar:
+  - o **Unique Pixel Hash**
+  - os metadados de exportação
+  - o arquivo final sem recompressão server-side
+
+  O fluxo oficial de entrega é:
+  **VPS / pipeline local → Telegram `sendDocument` → celular do administrador → postagem manual no TikTok**
+
+  O antigo fluxo via **Google Drive foi descontinuado** e não faz mais parte do pipeline oficial.
+
+### 4.4. Transcrição e Processamento de Áudio
+- **Groq Whisper API (`whisper-large-v3`)**  
+  Utilizada exclusivamente para **Speech-to-Text (STT)** dos áudios nativos gerados pelos motores de vídeo.  
+  Não é usada para TTS nem substitui os motores nativos de voz dos próprios geradores de vídeo.
+
+### 4.5. Pesquisa, Coleta e Enriquecimento de Dados
+- **Firecrawl API**  
+  Usada para scraping e leitura de páginas dinâmicas no upstream de descoberta e curadoria, especialmente no Worker A0.
+
+### 4.6. Modelos e Roteamento de IA
+- **OpenRouter**  
+  Camada de roteamento dos modelos auxiliares do ecossistema, usada conforme o papel de cada worker e suas exigências de custo, velocidade, multimodalidade e robustez.
+
+### 4.7. Skills e MCPs Operacionais
+O ambiente do projeto pode utilizar ferramentas de apoio para restaurar contexto, validar integrações, registrar sessões e reduzir custo operacional, incluindo:
+- **Obsidian MCP**
+- **Smart Connections MCP**
+- **Context7 MCP**
+- **git / gh**
+- skills instaladas relevantes por fase
+
+Essas ferramentas apoiam a operação, mas **não substituem a hierarquia de verdade do projeto**, que continua sendo:
+**código atual > `CLAUDE.md` > Documento Mestre > memória operacional**
+
+### 4.8. Estado Atual das Integrações Críticas
+No estado atual do projeto (atualizado 2026-04-18):
+- o caminho **A3 → A4** já foi homologado em caso real;
+- o canário de **Kling v3 Pro image-to-video** já foi validado;
+- a **cadeia completa A3 → A4 → A6 → A7** foi homologada ponta a ponta em modo zero-FAL sobre o lead canário `6705d973-90b6-4511-bc46-d5455c4aedff` (3/3 imagens Nano Banana Pro em 9:16 + 3/3 vídeos Kling v3 Pro em path produtivo, render Remotion/VPS real 720×1280 @ 6.3 Mbps, entrega Telegram `sendDocument` confirmada);
+- o fluxo **Remotion/VPS + A7/Telegram** já foi validado em modo zero-FAL com `disable_content_type_detection` preservando o Unique Pixel Hash (commit `e6da468`);
+- a entrega final via **Telegram `sendDocument`** está confirmada como canal oficial do ecossistema.
+
+As integrações acima devem ser tratadas como parte viva da operação e atualizadas sempre que o código homologado superar o estado descrito neste documento.
+
 ## 5. Agente Produtor e Formatos Alternativos (Pipeline Opcional)
 
 Gatilho via contrato Zod dos Agentes 3 e 4 no campo `format`.
@@ -153,8 +219,8 @@ O fluxo mandatório é:
 
 ## 7. Roadmap Arquitetural (Ordem de Execução Baseada na Auditoria)
 
-1. **Desbloquear Produção a6 (CRÍTICO):** Integrar a chamada final do `@remotion/renderer` no `worker-a6.ts` com os parâmetros corretos (720x1280, 6-10 Mbps, Unique Pixel Hash via escala+rotação).
-2. **Ativar Worker a7 (Delivery):** Implementar o fluxo Telegram `sendDocument` no `worker-a7.ts` para transportar o vídeo da VPS direto ao celular do admin.
+1. ✅ **Desbloquear Produção a6 (CONCLUÍDO 2026-04-18):** Chamada final do `@remotion/renderer` via `runRemoteRender` → `scripts/deploy-render.sh` homologada em 720×1280 @ 6.3 Mbps com Unique Pixel Hash (escala+rotação).
+2. ✅ **Ativar Worker a7 (Delivery) (CONCLUÍDO 2026-04-18):** Fluxo Telegram `sendDocument` em `worker-a7.ts` transportando o vídeo da VPS direto ao celular do admin sem recompressão (disable_content_type_detection shipped).
 3. **Integração de Repositórios Ausentes:** Clonar `OpenMontage`, importar `@trycua/launchpad`, puxar as skills `last30days` e instalar módulo do Telegram.
 4. **Evolução do Worker a3:** Implementar as lógicas dos *3 Diagnósticos* e *Regra dos 83%* exigidas no copy.
 5. **Ativação da Entrada do Funil (Worker a0):** Ligar o Gemini 3.0 Flash com Firecrawl e Skills SCTM para iniciar o fluxo contínuo real.
