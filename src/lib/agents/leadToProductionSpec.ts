@@ -29,6 +29,7 @@ const PHASE_TO_BLOCK: Record<string, Block> = {
 /** Naming legado do a3 → enum canônico do ProductionSpec. */
 const PROVIDER_MAP: Record<string, VideoProvider> = {
   seedance_2_0: "seedance",
+  kling_3_0_pro: "kling",
   kling_3_1: "kling",
   veo_3_1_fast: "veo",
 };

@@ -65,7 +65,7 @@ const visualPromptSchema = z.object({
 const motionBucketSchema = z.object({
   scene_index: z.number().int(),
   phase: z.string(),
-  provider: z.enum(["seedance_2_0", "kling_3_1", "veo_3_1_fast"]),
+  provider: z.enum(["seedance_2_0", "kling_3_0_pro", "kling_3_1", "veo_3_1_fast"]),
   motion_prompt: z.string().min(1),
   duration_seconds: z.number().positive().max(15),
   camera_movement: z.string().min(1),
