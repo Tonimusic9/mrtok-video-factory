@@ -34,8 +34,8 @@ A arquitetura resolve isso com:
 * ⏳ **Worker a1 (Extrator Multimodal):** Gemini 3.0 Flash. Realiza a ingestão de vídeo/áudio de referências virais para mapear *beats* emocionais, ritmo de cortes e fazer a engenharia reversa da retenção.
 * ✅ **Worker a3 (Scriptwriter):** Qwen3 Max. (*Smoke pass: ~12s*). Redige roteiros PT-BR baseados na **Doutrina Harry Dry** (Concreto, Único, Falsificável). Aplica a Regra dos 83%, os 3 Diagnósticos (que incorporam AIDA/PAS) e divide as cenas matematicamente para não estourar as APIs de vídeo.
 * ✅ **Worker a4 (Diretor de Arte):** Qwen3 Max orquestrando **Nano Banana Pro** (`fal-ai/nano-banana-pro`, `aspect_ratio:"9:16"`, `resolution:"1K"`). Cria o Storyboard UGC (9:16) e extrai os *Start Frames* e *End Frames* para cada clipe, preparando o terreno visual. Referência estética: `shot on iPhone 17 Pro Max`.
-* ✅ **Worker a5 (Produtor Visual/Voz):** Aciona os motores de vídeo via FAL.ai baseando-se nos frames do a4. **Motor Homologado: Kling v3 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, enforced em `worker-a4.ts`). **Configuração canônica atual:**
-  - **Kling v3 Pro i2v (Homologado):** 5s canônico por cena, preço $0.112/s sem áudio. Único provider ativo após estabilização em 2026-04-17.
+* ✅ **Worker a5 (Produtor Visual/Voz):** Aciona os motores de vídeo via FAL.ai baseando-se nos frames do a4. **Motor Homologado: Kling 3.0 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, enforced em `worker-a4.ts`). **Configuração canônica atual:**
+  - **Kling 3.0 Pro i2v (Homologado):** 5s canônico por cena, preço $0.112/s sem áudio. Único provider ativo após estabilização em 2026-04-17.
   - **Seedance 2.0 (DESATIVADO):** Timeouts crônicos na fila FAL — slug preservado em `FAL_SLUG_BY_PROVIDER` como alternativa arquitetural, 15s max quando reativado.
   - **Veo 3.1 Fast (alternativa):** 8s max por cena; não ativa no pipeline atual.
   - **Resolução Canônica:** 720x1280 (720p Vertical 9:16).
@@ -128,7 +128,7 @@ Para que o framework funcione fora do `dry_run` e gere valor real, o ecossistema
 - **FAL.ai**  
   Camada de execução para geração de imagens e vídeos pelos workers de produção visual. Atualmente o ecossistema utiliza:
   - **Nano Banana Pro** (`fal-ai/nano-banana-pro`, `aspect_ratio:"9:16"`, `resolution:"1K"`) para geração de imagens-base e storyboard no fluxo do upstream visual.
-  - **Kling v3 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, 5s canônico, $0.112/s sem áudio) como provider primário único homologado no worker a4. Migrado de Kling 1.5 Pro em 2026-04-17 (ver `worker-a4.ts:7-9`).
+  - **Kling 3.0 Pro image-to-video** (`fal-ai/kling-video/v3/pro/image-to-video`, 5s canônico, $0.112/s sem áudio) como provider primário único homologado no worker a4. Migrado de Kling 1.5 Pro em 2026-04-17 (ver `worker-a4.ts:7-9`).
   - **Seedance 2.0 temporariamente desativado** (timeouts crônicos na fila FAL). **Veo 3.1 Fast** permanece como opção arquitetural, mas não ativo. Reativação exige autorização explícita do administrador.
 
 ### 4.2. Renderização, Montagem e Pós-Produção
@@ -179,8 +179,8 @@ Essas ferramentas apoiam a operação, mas **não substituem a hierarquia de ver
 ### 4.8. Estado Atual das Integrações Críticas
 No estado atual do projeto (atualizado 2026-04-18):
 - o caminho **A3 → A4** já foi homologado em caso real;
-- o canário de **Kling v3 Pro image-to-video** já foi validado;
-- a **cadeia completa A3 → A4 → A6 → A7** foi homologada ponta a ponta em modo zero-FAL sobre o lead canário `6705d973-90b6-4511-bc46-d5455c4aedff` (3/3 imagens Nano Banana Pro em 9:16 + 3/3 vídeos Kling v3 Pro em path produtivo, render Remotion/VPS real 720×1280 @ 6.3 Mbps, entrega Telegram `sendDocument` confirmada);
+- o canário de **Kling 3.0 Pro image-to-video** já foi validado;
+- a **cadeia completa A3 → A4 → A6 → A7** foi homologada ponta a ponta em modo zero-FAL sobre o lead canário `6705d973-90b6-4511-bc46-d5455c4aedff` (3/3 imagens Nano Banana Pro em 9:16 + 3/3 vídeos Kling 3.0 Pro em path produtivo, render Remotion/VPS real 720×1280 @ 6.3 Mbps, entrega Telegram `sendDocument` confirmada);
 - o fluxo **Remotion/VPS + A7/Telegram** já foi validado em modo zero-FAL com `disable_content_type_detection` preservando o Unique Pixel Hash (commit `e6da468`);
 - a entrega final via **Telegram `sendDocument`** está confirmada como canal oficial do ecossistema.
 
